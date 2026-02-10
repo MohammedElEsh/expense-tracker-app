@@ -1,0 +1,73 @@
+name: expense_tracker
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.7+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  intl: ^0.20.2
+
+  # Local database
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Charts
+  fl_chart: ^1.1.1
+
+  # Preferences
+  shared_preferences: ^2.5.4
+
+  # State management
+  flutter_bloc: ^9.1.1
+  bloc: ^9.2.0
+  equatable: ^2.0.8
+
+  # Utils
+  uuid: ^4.5.2
+  image_picker: ^1.2.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  crypto: any
+
+  # Networking
+  dio: ^5.9.1
+
+  # Local notifications (recurring expense reminders)
+  flutter_local_notifications: ^20.0.0
+  timezone: ^0.10.1
+  flutter_timezone: ^5.0.1
+
+  # Localization
+  flutter_localizations:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# =============================
+# APP ICON CONFIG
+# =============================
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon_1.jpeg"
+  min_sdk_android: 21
+
+# =============================
+# FLUTTER CONFIG
+# =============================
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/

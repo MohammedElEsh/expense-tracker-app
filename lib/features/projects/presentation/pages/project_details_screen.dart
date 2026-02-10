@@ -1,0 +1,368 @@
+// ✅ Refactored Project Details Screen - Clean & Modular
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:ui' as ui;
+
+import 'package:expense_tracker/core/di/service_locator.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
+import 'package:expense_tracker/features/expenses/data/models/expense.dart';
+import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
+import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog_refactored.dart';
+import 'package:expense_tracker/utils/responsive_utils.dart';
+
+// Import refactored widgets
+import 'package:expense_tracker/features/projects/presentation/widgets/details/project_header_card.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/details/project_progress_card.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/details/project_statistics_section.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/details/project_info_card.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/details/project_expenses_section.dart';
+
+class ProjectDetailsScreen extends StatefulWidget {
+  final Project project;
+
+  const ProjectDetailsScreen({super.key, required this.project});
+
+  @override
+  State<ProjectDetailsScreen> createState() => _ProjectDetailsScreenState();
+}
+
+class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  // Current project (can be updated after edit)
+  late Project _currentProject;
+  ProjectReport? _projectReport;
+  bool _isLoadingReport = false;
+
+  // API Service
+  ProjectApiService get _projectService => serviceLocator.projectService;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentProject = widget.project;
+
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
+
+    _animationController.forward();
+
+    // Load project report
+    _loadProjectReport();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProjectReport() async {
+    try {
+      setState(() => _isLoadingReport = true);
+      final report = await _projectService.getProjectReport(_currentProject.id);
+      if (mounted) {
+        setState(() {
+          _projectReport = report;
+          _isLoadingReport = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingReport = false);
+        debugPrint('Error loading project report: $e');
+      }
+    }
+  }
+
+  Future<void> _refreshProject() async {
+    try {
+      final project = await _projectService.getProjectById(_currentProject.id);
+      if (project != null && mounted) {
+        setState(() => _currentProject = project);
+        await _loadProjectReport();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing project: $e');
+    }
+  }
+
+  Future<void> _editProject() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ProjectDialogRefactored(project: _currentProject),
+    );
+
+    if (result == true) {
+      await _refreshProject();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SettingsBloc, SettingsState>(
+      builder: (context, settings) {
+        final isRTL = settings.language == 'ar';
+        final isDesktop = context.isDesktop;
+
+        return Directionality(
+          textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+          child: Scaffold(
+            backgroundColor: settings.surfaceColor,
+            appBar: AppBar(
+              backgroundColor: settings.primaryColor,
+              foregroundColor:
+                  settings.isDarkMode ? Colors.black : Colors.white,
+              elevation: 0,
+              title: Text(
+                isRTL ? 'تفاصيل المشروع' : 'Project Details',
+                style: TextStyle(
+                  fontSize: isDesktop ? 20 : 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _refreshProject,
+                  tooltip: isRTL ? 'تحديث' : 'Refresh',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: _editProject,
+                  tooltip: isRTL ? 'تعديل المشروع' : 'Edit Project',
+                ),
+              ],
+            ),
+            body: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: BlocBuilder<ExpenseBloc, ExpenseState>(
+                  builder: (context, expenseState) {
+                    // Use expenses from report if available, otherwise get from ExpenseBloc
+                    final projectExpenses = _projectReport?.expenseObjects.isNotEmpty == true
+                        ? _projectReport!.expenseObjects
+                        : _getProjectExpenses(expenseState);
+                    
+                    // Use report data if available, fallback to calculated values
+                    final totalExpenses =
+                        _projectReport?.totalExpenses ??
+                        _getTotalExpenses(projectExpenses);
+                    final monthlyExpenses = _getMonthlyExpenses(
+                      projectExpenses,
+                    );
+                    final expenseCount =
+                        _projectReport?.expenseCount ?? projectExpenses.length;
+                    // Use progress from report if available, otherwise calculate from dates
+                    final progressPercentage =
+                        _projectReport?.progress ?? _getProgressPercentage();
+
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Project Header Card
+                          ProjectHeaderCard(
+                            project: _currentProject,
+                            settings: settings,
+                            isRTL: isRTL,
+                            isDesktop: isDesktop,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 2. Progress Card
+                          ProjectProgressCard(
+                            project: _currentProject,
+                            settings: settings,
+                            isRTL: isRTL,
+                            isDesktop: isDesktop,
+                            progressPercentage: progressPercentage,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 3. Statistics Section
+                          if (_isLoadingReport)
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          else
+                            ProjectStatisticsSection(
+                              settings: settings,
+                              isRTL: isRTL,
+                              isDesktop: isDesktop,
+                              totalExpenses: totalExpenses,
+                              monthlyExpenses: monthlyExpenses,
+                              expenseCount: expenseCount,
+                              progressPercentage: progressPercentage,
+                            ),
+                          const SizedBox(height: 24),
+
+                          // 4. Project Info Card
+                          ProjectInfoCard(
+                            project: _currentProject,
+                            settings: settings,
+                            isRTL: isRTL,
+                            isDesktop: isDesktop,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 5. Expenses Section
+                          ProjectExpensesSection(
+                            expenses: projectExpenses,
+                            settings: settings,
+                            isRTL: isRTL,
+                            isDesktop: isDesktop,
+                            onViewAll:
+                                () => _showAllExpenses(
+                                  projectExpenses,
+                                  settings,
+                                  isRTL,
+                                ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ============= Helper Methods =============
+
+  List<Expense> _getProjectExpenses(ExpenseState expenseState) {
+    if (expenseState.expenses.isNotEmpty) {
+      return expenseState.expenses
+          .where((expense) => expense.projectId == _currentProject.id)
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+    }
+    return [];
+  }
+
+  double _getTotalExpenses(List<Expense> expenses) {
+    return expenses.fold(0.0, (sum, expense) => sum + expense.amount);
+  }
+
+  double _getMonthlyExpenses(List<Expense> expenses) {
+    final now = DateTime.now();
+    final currentMonthExpenses =
+        expenses.where((expense) {
+          return expense.date.year == now.year &&
+              expense.date.month == now.month;
+        }).toList();
+    return currentMonthExpenses.fold(
+      0.0,
+      (sum, expense) => sum + expense.amount,
+    );
+  }
+
+  double _getProgressPercentage() {
+    if (_currentProject.endDate == null) return 0.0;
+
+    final now = DateTime.now();
+    final totalDays =
+        _currentProject.endDate!.difference(_currentProject.startDate).inDays;
+    final passedDays = now.difference(_currentProject.startDate).inDays;
+
+    if (totalDays <= 0) return 100.0;
+    if (passedDays <= 0) return 0.0;
+    if (passedDays >= totalDays) return 100.0;
+
+    return (passedDays / totalDays) * 100;
+  }
+
+  void _showAllExpenses(
+    List<Expense> expenses,
+    SettingsState settings,
+    bool isRTL,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            maxChildSize: 0.9,
+            minChildSize: 0.5,
+            builder:
+                (context, scrollController) => Container(
+                  decoration: BoxDecoration(
+                    color: settings.surfaceColor,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: settings.borderColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              isRTL
+                                  ? 'جميع مصروفات المشروع'
+                                  : 'All Project Expenses',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: settings.primaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ProjectExpensesSection(
+                          expenses: expenses,
+                          settings: settings,
+                          isRTL: isRTL,
+                          isDesktop: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ),
+    );
+  }
+}

@@ -1,0 +1,13 @@
+{
+    "cmake.ignoreCMakeListsMissing": true
+// ,
+//     "dart.flutterSdkPath": "C:\\flutter",
+//     "dart.lineLength": 120,
+//     "dart.openDevToolsOnSave": true,
+//     "dart.previewFlutterUiGuides": true,
+//     "dart.showTodos": true,
+//     "dart.sdkPaths": [
+//         "C:\\flutter\\bin\\cache\\dart-sdk"
+//     ],
+//     "dart.useDevSdk": true
+}
