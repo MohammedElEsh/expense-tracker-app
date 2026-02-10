@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/budgets/presentation/bloc/budget_bloc.dart';
-import 'package:expense_tracker/features/budgets/presentation/bloc/budget_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:expense_tracker/features/budgets/presentation/cubit/budget_cubit.dart';
+import 'package:expense_tracker/features/budgets/presentation/cubit/budget_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 
 class MonthlyBudgetMessageCard extends StatelessWidget {
   final DateTime selectedMonth;
@@ -16,7 +16,7 @@ class MonthlyBudgetMessageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BudgetBloc, BudgetState>(
+    return BlocBuilder<BudgetCubit, BudgetState>(
       builder: (context, budgetState) {
         final monthBudgets =
             budgetState.allBudgets.where((budget) {
@@ -26,7 +26,7 @@ class MonthlyBudgetMessageCard extends StatelessWidget {
 
         final hasBudgets = monthBudgets.isNotEmpty;
 
-        final isDark = BlocProvider.of<SettingsBloc>(context).state.isDarkMode;
+        final isDark = BlocProvider.of<SettingsCubit>(context).state.isDarkMode;
 
         return Container(
           width: double.infinity,

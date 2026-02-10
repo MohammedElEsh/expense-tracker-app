@@ -2,11 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/features/companies/data/models/company.dart';
 import 'package:expense_tracker/features/companies/data/datasources/company_api_service.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class CompanyDialog extends StatefulWidget {
   final Company? company;
@@ -40,7 +41,7 @@ class _CompanyDialogState extends State<CompanyDialog> {
       _initializeWithCompany(widget.company!);
     } else {
       // Get default currency from settings
-      final settings = context.read<SettingsBloc>().state;
+      final settings = context.read<SettingsCubit>().state;
       _selectedCurrency = settings.currency;
     }
   }
@@ -68,31 +69,38 @@ class _CompanyDialogState extends State<CompanyDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final company = widget.company?.copyWith(
+      final company =
+          widget.company?.copyWith(
             name: _nameController.text.trim(),
-            taxNumber: _taxNumberController.text.trim().isEmpty
-                ? null
-                : _taxNumberController.text.trim(),
-            address: _addressController.text.trim().isEmpty
-                ? null
-                : _addressController.text.trim(),
-            phone: _phoneController.text.trim().isEmpty
-                ? null
-                : _phoneController.text.trim(),
+            taxNumber:
+                _taxNumberController.text.trim().isEmpty
+                    ? null
+                    : _taxNumberController.text.trim(),
+            address:
+                _addressController.text.trim().isEmpty
+                    ? null
+                    : _addressController.text.trim(),
+            phone:
+                _phoneController.text.trim().isEmpty
+                    ? null
+                    : _phoneController.text.trim(),
             currency: _selectedCurrency,
           ) ??
           Company(
             id: '', // Will be set by API
             name: _nameController.text.trim(),
-            taxNumber: _taxNumberController.text.trim().isEmpty
-                ? null
-                : _taxNumberController.text.trim(),
-            address: _addressController.text.trim().isEmpty
-                ? null
-                : _addressController.text.trim(),
-            phone: _phoneController.text.trim().isEmpty
-                ? null
-                : _phoneController.text.trim(),
+            taxNumber:
+                _taxNumberController.text.trim().isEmpty
+                    ? null
+                    : _taxNumberController.text.trim(),
+            address:
+                _addressController.text.trim().isEmpty
+                    ? null
+                    : _addressController.text.trim(),
+            phone:
+                _phoneController.text.trim().isEmpty
+                    ? null
+                    : _phoneController.text.trim(),
             currency: _selectedCurrency,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -112,11 +120,11 @@ class _CompanyDialogState extends State<CompanyDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isRTL ? 'خطأ: $e' : 'Error: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -129,7 +137,7 @@ class _CompanyDialogState extends State<CompanyDialog> {
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.company != null;
 
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 
@@ -150,7 +158,7 @@ class _CompanyDialogState extends State<CompanyDialog> {
                 children: [
                   // Header
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: settings.primaryColor,
                       borderRadius: BorderRadius.vertical(
@@ -164,14 +172,13 @@ class _CompanyDialogState extends State<CompanyDialog> {
                           color:
                               settings.isDarkMode ? Colors.black : Colors.white,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             isEditing
                                 ? (isRTL ? 'تعديل الشركة' : 'Edit Company')
                                 : (isRTL ? 'شركة جديدة' : 'New Company'),
-                            style: TextStyle(
-                              fontSize: 20,
+                            style: AppTypography.headlineMedium.copyWith(
                               fontWeight: FontWeight.bold,
                               color:
                                   settings.isDarkMode
@@ -204,7 +211,7 @@ class _CompanyDialogState extends State<CompanyDialog> {
                   // Form
                   Flexible(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -214,13 +221,17 @@ class _CompanyDialogState extends State<CompanyDialog> {
                             TextFormField(
                               controller: _nameController,
                               decoration: InputDecoration(
-                                labelText: isRTL ? 'اسم الشركة' : 'Company Name',
-                                hintText: isRTL
-                                    ? 'أدخل اسم الشركة'
-                                    : 'Enter company name',
+                                labelText:
+                                    isRTL ? 'اسم الشركة' : 'Company Name',
+                                hintText:
+                                    isRTL
+                                        ? 'أدخل اسم الشركة'
+                                        : 'Enter company name',
                                 prefixIcon: const Icon(Icons.business),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                               ),
                               validator: (value) {
@@ -233,7 +244,7 @@ class _CompanyDialogState extends State<CompanyDialog> {
                               },
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
 
                             // Tax Number
                             TextFormField(
@@ -241,53 +252,62 @@ class _CompanyDialogState extends State<CompanyDialog> {
                               decoration: InputDecoration(
                                 labelText:
                                     isRTL ? 'الرقم الضريبي' : 'Tax Number',
-                                hintText: isRTL
-                                    ? 'أدخل الرقم الضريبي (اختياري)'
-                                    : 'Enter tax number (optional)',
+                                hintText:
+                                    isRTL
+                                        ? 'أدخل الرقم الضريبي (اختياري)'
+                                        : 'Enter tax number (optional)',
                                 prefixIcon: const Icon(Icons.badge),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                               ),
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
 
                             // Address
                             TextFormField(
                               controller: _addressController,
                               decoration: InputDecoration(
                                 labelText: isRTL ? 'العنوان' : 'Address',
-                                hintText: isRTL
-                                    ? 'أدخل عنوان الشركة (اختياري)'
-                                    : 'Enter company address (optional)',
+                                hintText:
+                                    isRTL
+                                        ? 'أدخل عنوان الشركة (اختياري)'
+                                        : 'Enter company address (optional)',
                                 prefixIcon: const Icon(Icons.location_on),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                               ),
                               maxLines: 2,
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
 
                             // Phone
                             TextFormField(
                               controller: _phoneController,
                               decoration: InputDecoration(
                                 labelText: isRTL ? 'الهاتف' : 'Phone',
-                                hintText: isRTL
-                                    ? 'أدخل رقم الهاتف (اختياري)'
-                                    : 'Enter phone number (optional)',
+                                hintText:
+                                    isRTL
+                                        ? 'أدخل رقم الهاتف (اختياري)'
+                                        : 'Enter phone number (optional)',
                                 prefixIcon: const Icon(Icons.phone),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                               ),
                               keyboardType: TextInputType.phone,
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
 
                             // Currency
                             DropdownButtonFormField<String>(
@@ -296,15 +316,18 @@ class _CompanyDialogState extends State<CompanyDialog> {
                                 labelText: isRTL ? 'العملة' : 'Currency',
                                 prefixIcon: const Icon(Icons.attach_money),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                               ),
-                              items: _currencies.map((currency) {
-                                return DropdownMenuItem(
-                                  value: currency,
-                                  child: Text(currency),
-                                );
-                              }).toList(),
+                              items:
+                                  _currencies.map((currency) {
+                                    return DropdownMenuItem(
+                                      value: currency,
+                                      child: Text(currency),
+                                    );
+                                  }).toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   setState(() => _selectedCurrency = value);
@@ -319,10 +342,10 @@ class _CompanyDialogState extends State<CompanyDialog> {
 
                   // Save Button
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: AppSpacing.buttonHeightLg,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleSave,
                         style: ElevatedButton.styleFrom(
@@ -330,14 +353,16 @@ class _CompanyDialogState extends State<CompanyDialog> {
                           foregroundColor:
                               settings.isDarkMode ? Colors.black : Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
                           ),
                         ),
                         child:
                             _isLoading
                                 ? SizedBox(
-                                  height: 24,
-                                  width: 24,
+                                  height: AppSpacing.iconMd,
+                                  width: AppSpacing.iconMd,
                                   child: CircularProgressIndicator(
                                     color:
                                         settings.isDarkMode
@@ -356,13 +381,12 @@ class _CompanyDialogState extends State<CompanyDialog> {
                                               ? Colors.black
                                               : Colors.white,
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpacing.xs),
                                     Text(
                                       isEditing
                                           ? (isRTL ? 'تحديث' : 'Update')
                                           : (isRTL ? 'إضافة' : 'Add'),
-                                      style: TextStyle(
-                                        fontSize: 16,
+                                      style: AppTypography.titleMedium.copyWith(
                                         fontWeight: FontWeight.bold,
                                         color:
                                             settings.isDarkMode
@@ -384,4 +408,3 @@ class _CompanyDialogState extends State<CompanyDialog> {
     );
   }
 }
-

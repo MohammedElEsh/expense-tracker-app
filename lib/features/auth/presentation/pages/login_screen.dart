@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_event.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_event.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'package:expense_tracker/features/users/data/models/user.dart';
 import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/screens/main_screen.dart';
+import 'package:expense_tracker/app/pages/main_screen.dart';
 import 'package:expense_tracker/features/auth/presentation/pages/signup_screen.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/state/user_context_manager.dart';
+import 'package:expense_tracker/features/auth/presentation/widgets/login/login_header.dart';
+import 'package:expense_tracker/features/auth/presentation/widgets/login/login_email_field.dart';
+import 'package:expense_tracker/features/auth/presentation/widgets/login/login_password_field.dart';
+import 'package:expense_tracker/features/auth/presentation/widgets/login/login_button.dart';
+import 'package:expense_tracker/features/auth/presentation/widgets/login/login_register_link.dart';
 
 /// شاشة تسجيل الدخول البسيطة
 class SimpleLoginScreen extends StatefulWidget {
@@ -84,10 +88,10 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
       await Future.delayed(const Duration(milliseconds: 300));
       debugPrint('✅ تم حفظ البيانات في SettingsService');
 
-      // تحديث حالة المستخدم في BLoC
+      // تحديث حالة المستخدم في Cubit
       if (mounted) {
-        // تحديث SettingsBloc بالوضع الجديد - Force reload to refresh appMode/companyId
-        context.read<SettingsBloc>().add(const LoadSettings(forceReload: true));
+        // تحديث SettingsCubit بالوضع الجديد - Force reload to refresh appMode/companyId
+        context.read<SettingsCubit>().loadSettings(forceReload: true);
 
         // Parse role from API response (defaults to owner if not provided)
         UserRole userRole = UserRole.owner;
@@ -98,7 +102,9 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
               orElse: () => UserRole.owner,
             );
           } catch (e) {
-            debugPrint('⚠️ Invalid role from API: ${user.role}, defaulting to owner');
+            debugPrint(
+              '⚠️ Invalid role from API: ${user.role}, defaulting to owner',
+            );
             userRole = UserRole.owner;
           }
         }
@@ -124,12 +130,12 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
           createdAt: user.createdAt ?? DateTime.now(),
         );
 
-        // تحديث UserBloc
-        context.read<UserBloc>().add(SetCurrentUser(currentUser));
+        // تحديث UserCubit
+        context.read<UserCubit>().setCurrentUser(currentUser);
 
-        // ⏳ انتظار تحديث الـ BLoC قبل الـ navigation
+        // ⏳ انتظار تحديث الـ Cubit قبل الـ navigation
         await Future.delayed(const Duration(milliseconds: 200));
-        debugPrint('✅ تم تحديث UserBloc');
+        debugPrint('✅ تم تحديث UserCubit');
 
         // الانتقال إلى الشاشة الرئيسية
         if (mounted) {
@@ -139,105 +145,13 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
         }
       }
     } on AccountDeactivatedException catch (e) {
-      // معالجة خاصة للحسابات المعطلة
-      if (mounted) {
-        final isRTL = Directionality.of(context) == TextDirection.rtl;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.block, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isRTL ? 'الحساب معطل' : 'Account Deactivated',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(e.message),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange.shade700,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 6),
-          ),
-        );
-      }
+      _showDeactivatedError(e);
     } on EmailNotVerifiedException catch (e) {
-      // معالجة البريد غير المفعل
-      if (mounted) {
-        final isRTL = Directionality.of(context) == TextDirection.rtl;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL
-                  ? 'يرجى تفعيل بريدك الإلكتروني أولاً'
-                  : 'Please verify your email first',
-            ),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: isRTL ? 'إعادة إرسال' : 'Resend',
-              textColor: Colors.white,
-              onPressed: () async {
-                try {
-                  // Fixed: Use serviceLocator instead of static call
-                  await serviceLocator.authRemoteDataSource
-                      .resendVerificationEmail(e.email);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isRTL
-                              ? 'تم إرسال رابط التفعيل'
-                              : 'Verification email sent',
-                        ),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (_) {}
-              },
-            ),
-          ),
-        );
-      }
+      _showEmailNotVerifiedError(e);
     } on AuthException catch (e) {
-      if (mounted) {
-        final isRTL = Directionality.of(context) == TextDirection.rtl;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL ? 'خطأ في تسجيل الدخول: ${e.message}' : e.message,
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _showAuthError(e);
     } catch (error) {
-      if (mounted) {
-        final isRTL = Directionality.of(context) == TextDirection.rtl;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL ? 'خطأ في تسجيل الدخول: $error' : 'Login error: $error',
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.fixed,
-          ),
-        );
-      }
+      _showGenericError(error);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -245,163 +159,168 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
     }
   }
 
+  void _showDeactivatedError(AccountDeactivatedException e) {
+    if (!mounted) return;
+    final isRTL = Directionality.of(context) == TextDirection.rtl;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.block,
+              color: Colors.white,
+              size: AppSpacing.iconMd,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isRTL ? 'الحساب معطل' : 'Account Deactivated',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(e.message),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  void _showEmailNotVerifiedError(EmailNotVerifiedException e) {
+    if (!mounted) return;
+    final isRTL = Directionality.of(context) == TextDirection.rtl;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isRTL
+              ? 'يرجى تفعيل بريدك الإلكتروني أولاً'
+              : 'Please verify your email first',
+        ),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: isRTL ? 'إعادة إرسال' : 'Resend',
+          textColor: Colors.white,
+          onPressed: () async {
+            try {
+              await serviceLocator.authRemoteDataSource.resendVerificationEmail(
+                e.email,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isRTL
+                          ? 'تم إرسال رابط التفعيل'
+                          : 'Verification email sent',
+                    ),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
+            } catch (_) {}
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showAuthError(AuthException e) {
+    if (!mounted) return;
+    final isRTL = Directionality.of(context) == TextDirection.rtl;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isRTL ? 'خطأ في تسجيل الدخول: ${e.message}' : e.message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showGenericError(Object error) {
+    if (!mounted) return;
+    final isRTL = Directionality.of(context) == TextDirection.rtl;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isRTL ? 'خطأ في تسجيل الدخول: $error' : 'Login error: $error',
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.fixed,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isRTL = Directionality.of(context) == TextDirection.rtl;
-    final theme = Theme.of(context);
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade700, Colors.blue.shade900],
+            colors: [AppColors.primaryDark, Color(0xFF0D47A1)],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppSpacing.xl),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
-                  const Icon(
-                    Icons.account_balance_wallet,
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    isRTL ? 'متتبع المصروفات' : 'Expense Tracker',
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isRTL ? 'سجل دخولك للمتابعة' : 'Login to continue',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
+                  // Logo & Title
+                  LoginHeader(isRTL: isRTL),
+                  const SizedBox(height: AppSpacing.xxxxl),
 
                   // Login Form
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                     ),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         children: [
-                          // Email
-                          TextFormField(
+                          LoginEmailField(
                             controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              labelText: isRTL ? 'البريد الإلكتروني' : 'Email',
-                              prefixIcon: const Icon(Icons.email),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return isRTL
-                                    ? 'أدخل البريد الإلكتروني'
-                                    : 'Enter email';
-                              }
-                              if (!value.contains('@')) {
-                                return isRTL
-                                    ? 'أدخل بريد إلكتروني صحيح'
-                                    : 'Enter a valid email';
-                              }
-                              return null;
-                            },
+                            isRTL: isRTL,
                           ),
-                          const SizedBox(height: 16),
-
-                          // Password
-                          TextFormField(
+                          const SizedBox(height: AppSpacing.md),
+                          LoginPasswordField(
                             controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            decoration: InputDecoration(
-                              labelText: isRTL ? 'كلمة المرور' : 'Password',
-                              prefixIcon: const Icon(Icons.lock),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(
-                                    () => _obscurePassword = !_obscurePassword,
-                                  );
-                                },
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return isRTL
-                                    ? 'أدخل كلمة المرور'
-                                    : 'Enter password';
-                              }
-                              return null;
+                            isRTL: isRTL,
+                            obscurePassword: _obscurePassword,
+                            onToggleVisibility: () {
+                              setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              );
                             },
                           ),
-                          const SizedBox(height: 24),
-
-                          // Login Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child:
-                                  _isLoading
-                                      ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                      : Text(
-                                        isRTL ? 'تسجيل الدخول' : 'Login',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                            ),
+                          const SizedBox(height: AppSpacing.xl),
+                          LoginButton(
+                            isLoading: _isLoading,
+                            isRTL: isRTL,
+                            onPressed: _handleLogin,
                           ),
-                          const SizedBox(height: 16),
-
-                          // Create Account
-                          TextButton(
+                          const SizedBox(height: AppSpacing.md),
+                          LoginRegisterLink(
+                            isRTL: isRTL,
                             onPressed: () {
                               Navigator.of(context).pushReplacement(
                                 MaterialPageRoute(
@@ -409,15 +328,6 @@ class _SimpleLoginScreenState extends State<SimpleLoginScreen> {
                                 ),
                               );
                             },
-                            child: Text(
-                              isRTL
-                                  ? 'ليس لديك حساب؟ أنشئ حساب جديد'
-                                  : "Don't have an account? Create one",
-                              style: TextStyle(
-                                color: theme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                           ),
                         ],
                       ),

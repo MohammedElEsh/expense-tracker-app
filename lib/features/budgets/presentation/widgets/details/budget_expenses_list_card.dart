@@ -4,11 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import 'package:expense_tracker/features/budgets/data/models/budget.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/features/budgets/utils/budget_helpers.dart';
 
 class BudgetExpensesListCard extends StatelessWidget {
@@ -27,7 +27,7 @@ class BudgetExpensesListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ExpenseBloc, ExpenseState>(
+    return BlocBuilder<ExpenseCubit, ExpenseState>(
       builder: (context, expenseState) {
         // تصفية المصروفات حسب الفئة والشهر
         final categoryExpenses =
@@ -188,7 +188,10 @@ class BudgetExpensesListCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('dd MMM yyyy', isRTL ? 'ar' : 'en').format(expense.date),
+                  DateFormat(
+                    'dd MMM yyyy',
+                    isRTL ? 'ar' : 'en',
+                  ).format(expense.date),
                   style: TextStyle(
                     fontSize: isDesktop ? 14 : 12,
                     color: settings.secondaryTextColor,

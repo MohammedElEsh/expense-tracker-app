@@ -24,9 +24,10 @@ class CustomCategoryField extends StatelessWidget {
         hintText: isRTL ? 'أدخل اسم الفئة' : 'Enter category name',
         border: const OutlineInputBorder(),
         prefixIcon: const Icon(Icons.edit),
-        helperText: isRTL
-            ? 'مطلوب عند اختيار "أخرى"'
-            : 'Required when "أخرى" is selected',
+        helperText:
+            isRTL
+                ? 'مطلوب عند اختيار "أخرى"'
+                : 'Required when "أخرى" is selected',
       ),
       textDirection: isRTL ? TextDirection.rtl : TextDirection.ltr,
       validator: validator,
@@ -34,4 +35,3 @@ class CustomCategoryField extends StatelessWidget {
     );
   }
 }
-

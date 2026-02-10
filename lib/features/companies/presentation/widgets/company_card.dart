@@ -1,7 +1,8 @@
 // ✅ Clean Architecture - Company Card Widget
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/features/companies/data/models/company.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class CompanyCard extends StatelessWidget {
   final Company company;
@@ -22,14 +23,16 @@ class CompanyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: AppSpacing.elevationMd,
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -39,14 +42,15 @@ class CompanyCard extends StatelessWidget {
                   // Status Indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: AppSpacing.xs,
+                      vertical: AppSpacing.xxs,
                     ),
                     decoration: BoxDecoration(
-                      color: company.isActive
-                          ? Colors.green.withValues(alpha: 0.1)
-                          : Colors.grey.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color:
+                          company.isActive
+                              ? AppColors.success.withValues(alpha: 0.1)
+                              : AppColors.badgeInactive.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -54,17 +58,22 @@ class CompanyCard extends StatelessWidget {
                         Icon(
                           company.isActive ? Icons.check_circle : Icons.cancel,
                           size: 14,
-                          color: company.isActive ? Colors.green : Colors.grey,
+                          color:
+                              company.isActive
+                                  ? AppColors.success
+                                  : AppColors.badgeInactive,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xxs),
                         Text(
                           company.isActive
                               ? (isRTL ? 'نشط' : 'Active')
                               : (isRTL ? 'غير نشط' : 'Inactive'),
-                          style: TextStyle(
-                            fontSize: 12,
+                          style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: company.isActive ? Colors.green : Colors.grey,
+                            color:
+                                company.isActive
+                                    ? AppColors.success
+                                    : AppColors.badgeInactive,
                           ),
                         ),
                       ],
@@ -81,57 +90,57 @@ class CompanyCard extends StatelessWidget {
                         onDelete();
                       }
                     },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.edit, size: 18),
-                            const SizedBox(width: 8),
-                            Text(isRTL ? 'تعديل' : 'Edit'),
-                          ],
-                        ),
-                      ),
-                      // PopupMenuItem(
-                      //   value: 'delete',
-                      //   child: Row(
-                      //     children: [
-                      //       const Icon(
-                      //         Icons.delete,
-                      //         color: Colors.red,
-                      //         size: 18,
-                      //       ),
-                      //       const SizedBox(width: 8),
-                      //       Text(
-                      //         isRTL ? 'حذف' : 'Delete',
-                      //         style: const TextStyle(color: Colors.red),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
-                    ],
+                    itemBuilder:
+                        (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.edit, size: 18),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(isRTL ? 'تعديل' : 'Edit'),
+                              ],
+                            ),
+                          ),
+                          // PopupMenuItem(
+                          //   value: 'delete',
+                          //   child: Row(
+                          //     children: [
+                          //       const Icon(
+                          //         Icons.delete,
+                          //         color: AppColors.error,
+                          //         size: 18,
+                          //       ),
+                          //       const SizedBox(width: AppSpacing.xs),
+                          //       Text(
+                          //         isRTL ? 'حذف' : 'Delete',
+                          //         style: const TextStyle(color: AppColors.error),
+                          //       ),
+                          //     ],
+                          //   ),
+                          // ),
+                        ],
                     child: Icon(
                       Icons.more_vert,
                       color: context.iconColor,
-                      size: 20,
+                      size: AppSpacing.iconSm,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Company Name
               Text(
                 company.name,
-                style: TextStyle(
-                  fontSize: 20,
+                style: AppTypography.headlineMedium.copyWith(
                   fontWeight: FontWeight.bold,
                   color: context.primaryTextColor,
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Company Details
               _buildDetailRow(
@@ -141,8 +150,9 @@ class CompanyCard extends StatelessWidget {
                 company.currency,
               ),
 
-              if (company.taxNumber != null && company.taxNumber!.isNotEmpty) ...[
-                const SizedBox(height: 8),
+              if (company.taxNumber != null &&
+                  company.taxNumber!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
                   context,
                   Icons.badge,
@@ -152,7 +162,7 @@ class CompanyCard extends StatelessWidget {
               ],
 
               if (company.phone != null && company.phone!.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
                   context,
                   Icons.phone,
@@ -162,7 +172,7 @@ class CompanyCard extends StatelessWidget {
               ],
 
               if (company.address != null && company.address!.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
                   context,
                   Icons.location_on,
@@ -171,44 +181,49 @@ class CompanyCard extends StatelessWidget {
                 ),
               ],
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Employee Count
               Row(
                 children: [
-                  Icon(Icons.people, size: 16, color: context.iconColor),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.people,
+                    size: AppSpacing.iconXs,
+                    color: context.iconColor,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
                   Text(
                     '${company.currentEmployeeCount} ${isRTL ? 'موظف' : 'employees'}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: context.secondaryTextColor,
+                    style: AppTypography.bodySmall.copyWith(
                       fontWeight: FontWeight.w500,
+                      color: context.secondaryTextColor,
                     ),
                   ),
                   const Spacer(),
                   if (company.ownerId != null)
                     Text(
                       '${isRTL ? 'المالك:' : 'Owner:'} ${company.ownerId!.name}',
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTypography.bodySmall.copyWith(
                         color: context.tertiaryTextColor,
                       ),
                     ),
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
 
               // Fiscal Year
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 14, color: context.iconColor),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: context.iconColor,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
                   Text(
                     '${isRTL ? 'بداية السنة المالية:' : 'Fiscal Year Start:'} ${company.fiscalYearStart}',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTypography.bodySmall.copyWith(
                       color: context.tertiaryTextColor,
                     ),
                   ),
@@ -229,13 +244,12 @@ class CompanyCard extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: context.iconColor),
-        const SizedBox(width: 8),
+        Icon(icon, size: AppSpacing.iconXs, color: context.iconColor),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(
             '$label: $value',
-            style: TextStyle(
-              fontSize: 14,
+            style: AppTypography.bodyMedium.copyWith(
               color: context.secondaryTextColor,
             ),
           ),
@@ -244,4 +258,3 @@ class CompanyCard extends StatelessWidget {
     );
   }
 }
-

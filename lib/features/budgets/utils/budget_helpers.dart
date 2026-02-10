@@ -1,6 +1,6 @@
 // Budget Helpers - مساعدات الميزانية
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
 
 class BudgetHelpers {
   /// الحصول على لون الفئة

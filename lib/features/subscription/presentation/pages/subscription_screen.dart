@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 

@@ -1,6 +1,6 @@
 // Home Feature - Presentation Layer - View Mode Selector Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class ViewModeSelector extends StatelessWidget {
   final bool isRTL;
@@ -16,37 +16,42 @@ class ViewModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor =
+        isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+
     return Container(
       decoration: BoxDecoration(
-        color: context.surfaceColor,
+        color: surfaceColor,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+          topLeft: Radius.circular(AppSpacing.radiusXl),
+          topRight: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            margin: const EdgeInsets.only(top: 8),
+            margin: const EdgeInsets.only(top: AppSpacing.xs),
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: context.borderColor,
-              borderRadius: BorderRadius.circular(2),
+              color: borderColor,
+              borderRadius: BorderRadius.circular(AppSpacing.xxxs),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(
             isRTL ? 'اختر طريقة العرض' : 'Select View Mode',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: AppTypography.headlineSmall,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _buildViewModeOption(context, 'all', isRTL ? 'الكل' : 'All'),
           _buildViewModeOption(context, 'day', isRTL ? 'اليوم' : 'Day'),
           _buildViewModeOption(context, 'week', isRTL ? 'الأسبوع' : 'Week'),
           _buildViewModeOption(context, 'month', isRTL ? 'الشهر' : 'Month'),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
@@ -54,6 +59,8 @@ class ViewModeSelector extends StatelessWidget {
 
   Widget _buildViewModeOption(BuildContext context, String mode, String label) {
     final isSelected = currentViewMode == mode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     return InkWell(
       onTap: () {
@@ -62,16 +69,17 @@ class ViewModeSelector extends StatelessWidget {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
           color:
               isSelected
-                  ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                   : null,
           border: Border(
-            bottom: BorderSide(
-              color: context.borderColor.withValues(alpha: 0.5),
-            ),
+            bottom: BorderSide(color: borderColor.withValues(alpha: 0.5)),
           ),
         ),
         child: Row(
@@ -79,16 +87,16 @@ class ViewModeSelector extends StatelessWidget {
             if (isSelected)
               Icon(
                 Icons.check_circle,
-                color: Theme.of(context).primaryColor,
-                size: 24,
+                color: Theme.of(context).colorScheme.primary,
+                size: AppSpacing.iconMd,
               ),
-            if (isSelected) const SizedBox(width: 16),
+            if (isSelected) const SizedBox(width: AppSpacing.md),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 16,
+              style: AppTypography.titleMedium.copyWith(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Theme.of(context).primaryColor : null,
+                color:
+                    isSelected ? Theme.of(context).colorScheme.primary : null,
               ),
             ),
           ],

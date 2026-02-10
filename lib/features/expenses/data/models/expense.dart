@@ -84,7 +84,7 @@ class Expense extends HiveObject {
       photoPath: json['photoPath'],
       accountId: json['accountId'] ?? '', // احتياطي للبيانات القديمة
       appMode: AppMode.values.firstWhere(
-            (mode) => mode.name == json['appMode'],
+        (mode) => mode.name == json['appMode'],
         orElse: () => AppMode.personal, // افتراضي للبيانات القديمة
       ),
       projectId: json['projectId'],
@@ -145,9 +145,16 @@ class Expense extends HiveObject {
         final rawValue = json['date'] as String;
         final parsed = DateTime.parse(rawValue);
         // If string ends with 'Z', it's UTC - convert to local
-        expenseDate = rawValue.endsWith('Z') ? parsed.toLocal() : (parsed.isUtc ? parsed.toLocal() : parsed);
+        expenseDate =
+            rawValue.endsWith('Z')
+                ? parsed.toLocal()
+                : (parsed.isUtc ? parsed.toLocal() : parsed);
       } else if (json['date'] is int) {
-        expenseDate = DateTime.fromMillisecondsSinceEpoch(json['date'], isUtc: true).toLocal();
+        expenseDate =
+            DateTime.fromMillisecondsSinceEpoch(
+              json['date'],
+              isUtc: true,
+            ).toLocal();
       } else {
         expenseDate = DateTime.now();
       }
@@ -161,7 +168,7 @@ class Expense extends HiveObject {
     if (json['appMode'] != null) {
       try {
         appMode = AppMode.values.firstWhere(
-              (mode) => mode.name == json['appMode'],
+          (mode) => mode.name == json['appMode'],
           orElse: () => AppMode.personal,
         );
       } catch (e) {
@@ -180,15 +187,22 @@ class Expense extends HiveObject {
           final rawValue = json['createdAt'] as String;
           final parsed = DateTime.parse(rawValue);
           // If string ends with 'Z', it's UTC - convert to local
-          createdAt = rawValue.endsWith('Z') ? parsed.toLocal() : (parsed.isUtc ? parsed.toLocal() : parsed);
-          
+          createdAt =
+              rawValue.endsWith('Z')
+                  ? parsed.toLocal()
+                  : (parsed.isUtc ? parsed.toLocal() : parsed);
+
           // Debug logging for timezone handling
           debugPrint('🔍 Expense.fromApiJson - createdAt parsing:');
           debugPrint('   Raw API: $rawValue');
           debugPrint('   Parsed (UTC): ${parsed.toUtc()}');
           debugPrint('   Final (Local): $createdAt');
         } else if (json['createdAt'] is int) {
-          createdAt = DateTime.fromMillisecondsSinceEpoch(json['createdAt'], isUtc: true).toLocal();
+          createdAt =
+              DateTime.fromMillisecondsSinceEpoch(
+                json['createdAt'],
+                isUtc: true,
+              ).toLocal();
         }
       }
     } catch (e) {
@@ -201,9 +215,16 @@ class Expense extends HiveObject {
           final rawValue = json['updatedAt'] as String;
           final parsed = DateTime.parse(rawValue);
           // If string ends with 'Z', it's UTC - convert to local
-          updatedAt = rawValue.endsWith('Z') ? parsed.toLocal() : (parsed.isUtc ? parsed.toLocal() : parsed);
+          updatedAt =
+              rawValue.endsWith('Z')
+                  ? parsed.toLocal()
+                  : (parsed.isUtc ? parsed.toLocal() : parsed);
         } else if (json['updatedAt'] is int) {
-          updatedAt = DateTime.fromMillisecondsSinceEpoch(json['updatedAt'], isUtc: true).toLocal();
+          updatedAt =
+              DateTime.fromMillisecondsSinceEpoch(
+                json['updatedAt'],
+                isUtc: true,
+              ).toLocal();
         }
       }
     } catch (e) {
@@ -217,7 +238,9 @@ class Expense extends HiveObject {
     final expenseNotes = json['notes'] ?? '';
 
     if (expenseId.isEmpty) {
-      debugPrint('⚠️ Expense.fromApiJson - Missing expense ID, generating new one');
+      debugPrint(
+        '⚠️ Expense.fromApiJson - Missing expense ID, generating new one',
+      );
     }
     if (expenseAmount == 0.0) {
       debugPrint('⚠️ Expense.fromApiJson - Expense amount is 0');
@@ -227,16 +250,20 @@ class Expense extends HiveObject {
     }
 
     final expense = Expense(
-      id: expenseId.isEmpty
-          ? DateTime.now().millisecondsSinceEpoch.toString()
-          : expenseId,
+      id:
+          expenseId.isEmpty
+              ? DateTime.now().millisecondsSinceEpoch.toString()
+              : expenseId,
       amount: expenseAmount,
       category: expenseCategory.isEmpty ? 'Other' : expenseCategory,
       customCategory: json['customCategory'],
       notes: expenseNotes,
       date: expenseDate,
       photoPath: json['photoPath'],
-      accountId: accountId.isEmpty ? 'default' : accountId, // Ensure accountId is not empty
+      accountId:
+          accountId.isEmpty
+              ? 'default'
+              : accountId, // Ensure accountId is not empty
       appMode: appMode,
       projectId: projectId,
       department: json['department'],
@@ -251,9 +278,9 @@ class Expense extends HiveObject {
 
     debugPrint(
       '✅ Expense.fromApiJson - Parsed expense: '
-          'id=${expense.id}, amount=${expense.amount}, '
-          'category=${expense.category}, accountId=${expense.accountId}, '
-          'employeeId=${expense.employeeId}, employeeName=${expense.employeeName}',
+      'id=${expense.id}, amount=${expense.amount}, '
+      'category=${expense.category}, accountId=${expense.accountId}, '
+      'employeeId=${expense.employeeId}, employeeName=${expense.employeeName}',
     );
 
     return expense;
@@ -339,7 +366,7 @@ class ExpenseAdapter extends TypeAdapter<Expense> {
       try {
         final appModeString = reader.readString();
         appMode = AppMode.values.firstWhere(
-              (mode) => mode.name == appModeString,
+          (mode) => mode.name == appModeString,
           orElse: () => AppMode.personal,
         );
       } catch (e) {

@@ -1,14 +1,14 @@
 // Settings - Management Features Card Widget
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/features/users/data/models/user.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/pages/recurring_expenses_screen.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/accounts_screen.dart';
 import 'package:expense_tracker/features/projects/presentation/pages/projects_screen.dart';
 import 'package:expense_tracker/features/vendors/presentation/pages/vendors_screen.dart';
 import 'package:expense_tracker/features/users/presentation/pages/user_management_screen.dart';
 import 'package:expense_tracker/features/companies/presentation/pages/companies_screen.dart';
-import 'package:expense_tracker/services/permission_service.dart';
+import 'package:expense_tracker/core/services/permission_service.dart';
 
 class ManagementFeaturesCard extends StatelessWidget {
   final SettingsState settings;
@@ -84,7 +84,9 @@ class ManagementFeaturesCard extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CompaniesScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const CompaniesScreen(),
+                ),
               );
             },
           ),
@@ -136,13 +138,14 @@ class ManagementFeaturesCard extends StatelessWidget {
             _buildManagementButton(
               context,
               title: isRTL ? 'إدارة المستخدمين' : 'User Management',
-              description: PermissionService.canManageUsers(currentUser)
-                  ? (isRTL
-                      ? 'إدارة موظفي الشركة وصلاحياتهم'
-                      : 'Manage company employees and their permissions')
-                  : (isRTL
-                      ? 'عرض قائمة موظفي الشركة'
-                      : 'View company employees list'),
+              description:
+                  PermissionService.canManageUsers(currentUser)
+                      ? (isRTL
+                          ? 'إدارة موظفي الشركة وصلاحياتهم'
+                          : 'Manage company employees and their permissions')
+                      : (isRTL
+                          ? 'عرض قائمة موظفي الشركة'
+                          : 'View company employees list'),
               icon: Icons.people,
               color: Colors.indigo,
               onTap: () {

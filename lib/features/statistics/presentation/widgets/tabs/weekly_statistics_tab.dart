@@ -1,8 +1,8 @@
 // ✅ Weekly Statistics Tab - Extracted from Enhanced Statistics Screen
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class WeeklyStatisticsTab extends StatelessWidget {
   final ExpenseState expenseState;

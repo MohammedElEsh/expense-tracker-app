@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class YearlyTotalCard extends StatelessWidget {
   final int year;

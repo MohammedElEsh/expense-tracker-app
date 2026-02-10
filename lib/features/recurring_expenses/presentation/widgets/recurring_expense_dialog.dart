@@ -2,30 +2,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
-import 'package:expense_tracker/constants/categories.dart';
-import 'package:expense_tracker/constants/category_constants.dart' show CategoryType;
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/core/constants/category_constants.dart'
+    show CategoryType;
 import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/bloc/recurring_expense_bloc.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/bloc/recurring_expense_event.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
 import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
 
-class RecurringExpenseDialogRefactored extends StatefulWidget {
+class RecurringExpenseDialog extends StatefulWidget {
   final RecurringExpense? recurringExpense;
 
-  const RecurringExpenseDialogRefactored({super.key, this.recurringExpense});
+  const RecurringExpenseDialog({super.key, this.recurringExpense});
 
   @override
-  State<RecurringExpenseDialogRefactored> createState() =>
-      _RecurringExpenseDialogRefactoredState();
+  State<RecurringExpenseDialog> createState() => _RecurringExpenseDialogState();
 }
 
-class _RecurringExpenseDialogRefactoredState
-    extends State<RecurringExpenseDialogRefactored> {
+class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
@@ -44,7 +42,7 @@ class _RecurringExpenseDialogRefactoredState
       _initializeWithRecurringExpense(widget.recurringExpense!);
     } else {
       // Set default account
-      final accountState = context.read<AccountBloc>().state;
+      final accountState = context.read<AccountCubit>().state;
       if (accountState.accounts.isNotEmpty) {
         _selectedAccountId = accountState.accounts.first.id;
       }
@@ -56,7 +54,7 @@ class _RecurringExpenseDialogRefactoredState
     super.didChangeDependencies();
     // Set default category based on app mode if not already set
     if (_category.isEmpty && widget.recurringExpense == null) {
-      final settings = context.read<SettingsBloc>().state;
+      final settings = context.read<SettingsCubit>().state;
       final isBusinessMode = settings.appMode == AppMode.business;
       _category = Categories.getDefaultCategoryForType(
         isBusinessMode,
@@ -86,7 +84,7 @@ class _RecurringExpenseDialogRefactoredState
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedAccountId == null) {
-      final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+      final isRTL = context.read<SettingsCubit>().state.language == 'ar';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -101,7 +99,7 @@ class _RecurringExpenseDialogRefactoredState
     setState(() => _isLoading = true);
 
     try {
-      final settings = context.read<SettingsBloc>().state;
+      final settings = context.read<SettingsCubit>().state;
 
       final isEditing = widget.recurringExpense != null;
 
@@ -124,12 +122,12 @@ class _RecurringExpenseDialogRefactoredState
 
       // Use BLoC to add or update the expense
       if (isEditing) {
-        context.read<RecurringExpenseBloc>().add(
-          UpdateRecurringExpense(recurringExpense),
+        context.read<RecurringExpenseCubit>().updateRecurringExpense(
+          recurringExpense,
         );
       } else {
-        context.read<RecurringExpenseBloc>().add(
-          AddRecurringExpense(recurringExpense),
+        context.read<RecurringExpenseCubit>().addRecurringExpense(
+          recurringExpense,
         );
       }
 
@@ -139,7 +137,7 @@ class _RecurringExpenseDialogRefactoredState
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -158,7 +156,7 @@ class _RecurringExpenseDialogRefactoredState
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.recurringExpense != null;
 
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final categories = Categories.reorderCategories(
@@ -168,8 +166,8 @@ class _RecurringExpenseDialogRefactoredState
           ),
         );
 
-        // Get accounts from AccountBloc
-        final accountState = context.watch<AccountBloc>().state;
+        // Get accounts from AccountCubit
+        final accountState = context.watch<AccountCubit>().state;
         final accounts = accountState.accounts;
 
         return Dialog(

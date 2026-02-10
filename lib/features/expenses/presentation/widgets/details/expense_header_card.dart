@@ -1,10 +1,11 @@
 // Expense Details - Header Card Widget
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/core/utils/date_time_utils.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 class ExpenseHeaderCard extends StatelessWidget {
   final Expense expense;
@@ -26,7 +27,7 @@ class ExpenseHeaderCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(isDesktop ? 32 : 24),
+      padding: EdgeInsets.all(isDesktop ? AppSpacing.xxl : AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -47,7 +48,7 @@ class ExpenseHeaderCard extends StatelessWidget {
         children: [
           // الأيقونة
           Container(
-            padding: EdgeInsets.all(isDesktop ? 20 : 16),
+            padding: EdgeInsets.all(isDesktop ? AppSpacing.lg : AppSpacing.md),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
@@ -57,29 +58,28 @@ class ExpenseHeaderCard extends StatelessWidget {
               style: TextStyle(fontSize: isDesktop ? 60 : (isTablet ? 56 : 48)),
             ),
           ),
-          SizedBox(height: isDesktop ? 20 : 16),
+          SizedBox(height: isDesktop ? AppSpacing.lg : AppSpacing.md),
 
           // المبلغ
           Text(
             '${NumberFormat('#,##0.00').format(expense.amount)} $currency',
-            style: TextStyle(
+            style: AppTypography.displayLarge.copyWith(
               fontSize: isDesktop ? 40 : (isTablet ? 36 : 32),
-              fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          SizedBox(height: isDesktop ? 12 : 8),
+          SizedBox(height: isDesktop ? AppSpacing.sm : AppSpacing.xs),
 
           // الفئة
           Text(
             _getCategoryName(expense.getDisplayCategoryName(), isRTL),
-            style: TextStyle(
+            style: AppTypography.headlineLarge.copyWith(
               fontSize: isDesktop ? 22 : (isTablet ? 20 : 18),
               color: Colors.white,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: isDesktop ? 6 : 4),
+          SizedBox(height: isDesktop ? AppSpacing.xxs + 2 : AppSpacing.xxs),
 
           // التاريخ
           Row(
@@ -88,18 +88,18 @@ class ExpenseHeaderCard extends StatelessWidget {
               Icon(
                 Icons.calendar_today,
                 color: Colors.white70,
-                size: isDesktop ? 18 : 16,
+                size: isDesktop ? 18.0 : AppSpacing.iconXs,
               ),
-              SizedBox(width: isDesktop ? 10 : 8),
+              SizedBox(width: isDesktop ? AppSpacing.xs + 2 : AppSpacing.xs),
               Text(
                 DateTimeUtils.formatExpenseDateHeader(
                   expenseDate: expense.date,
                   isRTL: isRTL,
                 ),
-                style: TextStyle(
-                  fontSize: isDesktop ? 16 : 14,
-                  color: Colors.white70,
-                ),
+                style: (isDesktop
+                        ? AppTypography.bodyLarge
+                        : AppTypography.bodyMedium)
+                    .copyWith(color: Colors.white70),
               ),
             ],
           ),

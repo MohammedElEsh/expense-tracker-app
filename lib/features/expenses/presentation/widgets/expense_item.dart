@@ -1,12 +1,13 @@
 import 'dart:io';
 
 import 'package:expense_tracker/core/utils/date_time_utils.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_state.dart';
-import 'package:expense_tracker/services/permission_service.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
+import 'package:expense_tracker/core/services/permission_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -72,7 +73,10 @@ class ExpenseItem extends StatelessWidget {
     return formatted;
   }
 
-  Color _amountColor() => Colors.red;
+  Color _amountColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppColors.darkError : AppColors.error;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,13 +85,19 @@ class ExpenseItem extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        borderRadius: BorderRadius.circular(
+          isTablet ? AppSpacing.radiusLg : AppSpacing.radiusMd,
+        ),
         onTap: () => _navigateToDetails(context),
         child: Container(
-          margin: EdgeInsets.only(bottom: isTablet ? 12 : 8),
+          margin: EdgeInsets.only(
+            bottom: isTablet ? AppSpacing.sm : AppSpacing.xs,
+          ),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+            borderRadius: BorderRadius.circular(
+              isTablet ? AppSpacing.radiusLg : AppSpacing.radiusMd,
+            ),
             border: Border.all(
               color: Theme.of(context).dividerColor.withOpacity(0.35),
             ),
@@ -101,7 +111,7 @@ class ExpenseItem extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.all(isTablet ? 16 : 12),
+            padding: EdgeInsets.all(isTablet ? AppSpacing.md : AppSpacing.sm),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -111,32 +121,42 @@ class ExpenseItem extends StatelessWidget {
                   size: isTablet ? 48 : 40,
                 ),
 
-                SizedBox(width: isTablet ? 14 : 12),
+                SizedBox(width: isTablet ? AppSpacing.sm + 2 : AppSpacing.sm),
 
                 // Middle Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment:
-                    isRTL ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        isRTL
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
                     children: [
                       // Title (notes or category)
                       Text(
-                        expense.notes.isNotEmpty ? expense.notes : _displayCategory(),
+                        expense.notes.isNotEmpty
+                            ? expense.notes
+                            : _displayCategory(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: isRTL ? TextAlign.right : TextAlign.left,
-                        style: TextStyle(
-                          fontSize: isTablet ? 18 : 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style:
+                            isTablet
+                                ? AppTypography.titleLarge.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                )
+                                : AppTypography.titleSmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xxs + 2),
 
                       // Subtitle: Category + DateTime compact
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        alignment: isRTL ? WrapAlignment.end : WrapAlignment.start,
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xxs + 2,
+                        alignment:
+                            isRTL ? WrapAlignment.end : WrapAlignment.start,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           _Pill(
@@ -145,11 +165,17 @@ class ExpenseItem extends StatelessWidget {
                           ),
                           Text(
                             _compactDateTime(),
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: isTablet ? 14 : 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: (isTablet
+                                    ? AppTypography.bodyMedium
+                                    : AppTypography.bodySmall)
+                                .copyWith(
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? AppColors.textSecondaryDark
+                                          : AppColors.textSecondaryLight,
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
                         ],
                       ),
@@ -191,7 +217,7 @@ class ExpenseItem extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(width: isTablet ? 12 : 10),
+                SizedBox(width: isTablet ? AppSpacing.sm : AppSpacing.xs + 2),
 
                 // Right side: Amount + delete button
                 Column(
@@ -199,19 +225,24 @@ class ExpenseItem extends StatelessWidget {
                   children: [
                     Text(
                       '$currencySymbol${expense.amount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: isTablet ? 18 : 15,
-                        fontWeight: FontWeight.w800,
-                        color: _amountColor(),
-                      ),
+                      style: (isTablet
+                              ? AppTypography.amountSmall
+                              : AppTypography.amountSmall.copyWith(
+                                fontSize: 15,
+                              ))
+                          .copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: _amountColor(context),
+                          ),
                     ),
-                    const SizedBox(height: 8),
-                    BlocBuilder<UserBloc, UserState>(
+                    const SizedBox(height: AppSpacing.xs),
+                    BlocBuilder<UserCubit, UserState>(
                       builder: (context, userState) {
-                        final canDelete = PermissionService.canDeleteSpecificExpense(
-                          userState.currentUser,
-                          expense.employeeId ?? '',
-                        );
+                        final canDelete =
+                            PermissionService.canDeleteSpecificExpense(
+                              userState.currentUser,
+                              expense.employeeId ?? '',
+                            );
                         if (!canDelete) return const SizedBox.shrink();
                         return _IconAction(
                           icon: Icons.delete_outline,
@@ -239,33 +270,34 @@ class ExpenseItem extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: Image.file(
-                  File(expense.photoPath!),
-                  fit: BoxFit.contain,
+      builder:
+          (context) => Dialog(
+            backgroundColor: Colors.black,
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    child: Image.file(
+                      File(expense.photoPath!),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: isTablet ? 24 : 16,
-              right: isTablet ? 24 : 16,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: isTablet ? 40 : 30,
+                Positioned(
+                  top: isTablet ? AppSpacing.xl : AppSpacing.md,
+                  right: isTablet ? AppSpacing.xl : AppSpacing.md,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: isTablet ? 40 : 30,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -278,20 +310,27 @@ class ExpenseItem extends StatelessWidget {
         return AlertDialog(
           title: Text(
             isRTL ? 'حذف المصروف' : 'Delete Expense',
-            style: TextStyle(fontSize: isTablet ? 20 : 18),
+            style:
+                isTablet
+                    ? AppTypography.headlineMedium
+                    : AppTypography.headlineSmall,
           ),
           content: Text(
             isRTL
                 ? 'هل أنت متأكد من رغبتك في حذف هذا المصروف؟'
                 : 'Are you sure you want to delete this expense?',
-            style: TextStyle(fontSize: isTablet ? 16 : 14),
+            style:
+                isTablet ? AppTypography.bodyLarge : AppTypography.bodyMedium,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 isRTL ? 'إلغاء' : 'Cancel',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+                style:
+                    isTablet
+                        ? AppTypography.bodyLarge
+                        : AppTypography.bodyMedium,
               ),
             ),
             ElevatedButton(
@@ -300,16 +339,19 @@ class ExpenseItem extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 24 : 16,
-                  vertical: isTablet ? 12 : 8,
+                  horizontal: isTablet ? AppSpacing.xl : AppSpacing.md,
+                  vertical: isTablet ? AppSpacing.sm : AppSpacing.xs,
                 ),
               ),
               child: Text(
                 isRTL ? 'حذف' : 'Delete',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+                style:
+                    isTablet
+                        ? AppTypography.bodyLarge
+                        : AppTypography.bodyMedium,
               ),
             ),
           ],
@@ -335,15 +377,15 @@ class _CategoryAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = Colors.blue.withOpacity(0.10);
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: bg,
+        color: primaryColor.withOpacity(0.10),
         borderRadius: BorderRadius.circular(size / 2),
       ),
-      child: Icon(icon, color: Colors.blue, size: size * 0.55),
+      child: Icon(icon, color: primaryColor, size: size * 0.55),
     );
   }
 }
@@ -356,23 +398,36 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs + 2,
+        vertical: AppSpacing.xxs + 2,
+      ),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(999),
+        color: (isDark ? Colors.grey : Colors.grey).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey[700]),
-          const SizedBox(width: 6),
+          Icon(
+            icon,
+            size: AppSpacing.sm + 2,
+            color:
+                isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+          ),
+          const SizedBox(width: AppSpacing.xxs + 2),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+              color:
+                  isDark
+                      ? AppColors.textPrimaryDark
+                      : AppColors.textPrimaryLight,
             ),
           ),
         ],
@@ -394,18 +449,20 @@ class _IconAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final errorColor = isDark ? AppColors.darkError : AppColors.error;
     return InkResponse(
       onTap: onPressed,
       radius: 22,
       child: Tooltip(
         message: tooltip,
         child: Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(AppSpacing.xxs + 2),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.10),
-            borderRadius: BorderRadius.circular(10),
+            color: errorColor.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm + 2),
           ),
-          child: Icon(icon, color: Colors.red[400], size: 22),
+          child: Icon(icon, color: errorColor.withOpacity(0.7), size: 22),
         ),
       ),
     );
@@ -430,6 +487,7 @@ class _PhotoMiniPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final exists = File(path).existsSync();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: exists ? onTap : null,
@@ -438,19 +496,30 @@ class _PhotoMiniPreview extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: Colors.grey.shade300),
-          color: Colors.grey.shade100,
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          ),
+          color:
+              isDark
+                  ? AppColors.surfaceVariantDark
+                  : AppColors.surfaceVariantLight,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          child: exists
-              ? Image.file(File(path), fit: BoxFit.cover)
-              : Center(
-            child: Text(
-              isRTL ? 'الصورة غير متوفرة' : 'Image not available',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ),
+          child:
+              exists
+                  ? Image.file(File(path), fit: BoxFit.cover)
+                  : Center(
+                    child: Text(
+                      isRTL ? 'الصورة غير متوفرة' : 'Image not available',
+                      style: AppTypography.bodySmall.copyWith(
+                        color:
+                            isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ),
         ),
       ),
     );

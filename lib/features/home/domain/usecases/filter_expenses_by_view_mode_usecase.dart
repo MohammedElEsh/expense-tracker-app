@@ -11,9 +11,10 @@ class FilterExpensesByViewModeUseCase {
     // First, filter by account if provided
     List<Expense> filteredExpenses = allExpenses;
     if (accountId != null && accountId.isNotEmpty) {
-      filteredExpenses = filteredExpenses
-          .where((expense) => expense.accountId == accountId)
-          .toList();
+      filteredExpenses =
+          filteredExpenses
+              .where((expense) => expense.accountId == accountId)
+              .toList();
     }
 
     // Then, filter by view mode

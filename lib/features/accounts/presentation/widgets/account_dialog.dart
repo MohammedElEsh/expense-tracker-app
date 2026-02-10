@@ -3,25 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_event.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 
-class AccountDialogRefactored extends StatefulWidget {
+class AccountDialog extends StatefulWidget {
   final Account? account;
 
-  const AccountDialogRefactored({super.key, this.account});
+  const AccountDialog({super.key, this.account});
 
   @override
-  State<AccountDialogRefactored> createState() =>
-      _AccountDialogRefactoredState();
+  State<AccountDialog> createState() => _AccountDialogState();
 }
 
-class _AccountDialogRefactoredState extends State<AccountDialogRefactored> {
+class _AccountDialogState extends State<AccountDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
@@ -57,29 +55,29 @@ class _AccountDialogRefactoredState extends State<AccountDialogRefactored> {
 
     try {
       final isEditing = widget.account != null;
-      final accountBloc = context.read<AccountBloc>();
+      final accountCubit = context.read<AccountCubit>();
 
       if (isEditing) {
-        // Update existing account via BLoC
+        // Update existing account via Cubit
         final account = widget.account!.copyWith(
           name: _nameController.text.trim(),
           balance: double.parse(_balanceController.text),
           type: _selectedType,
         );
-        accountBloc.add(UpdateAccount(account));
+        accountCubit.updateAccount(account);
       } else {
-        // Add new account via BLoC
+        // Add new account via Cubit
         final account = Account(
           id: const Uuid().v4(),
           name: _nameController.text.trim(),
           balance: double.parse(_balanceController.text),
           type: _selectedType,
-        currency:
-            SettingsService
-                .currency, // Use app's current currency (SAR, USD, EGP, etc.)
+          currency:
+              SettingsService
+                  .currency, // Use app's current currency (SAR, USD, EGP, etc.)
           createdAt: DateTime.now(),
         );
-        accountBloc.add(AddAccount(account));
+        accountCubit.addAccount(account);
       }
 
       if (mounted) {
@@ -90,7 +88,7 @@ class _AccountDialogRefactoredState extends State<AccountDialogRefactored> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isRTL ? 'خطأ: $e' : 'Error: $e'),
@@ -107,7 +105,7 @@ class _AccountDialogRefactoredState extends State<AccountDialogRefactored> {
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.account != null;
 
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 

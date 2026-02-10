@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/auth/presentation/pages/business_signup_screen.dart';
 import 'package:expense_tracker/features/auth/presentation/pages/personal_signup_screen.dart';
 import 'package:expense_tracker/features/auth/presentation/pages/login_screen.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 /// شاشة الترحيب - اختيار نوع الحساب
 class WelcomeScreen extends StatelessWidget {
@@ -202,7 +202,7 @@ class _AccountTypeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  BlocBuilder<SettingsBloc, SettingsState>(
+                  BlocBuilder<SettingsCubit, SettingsState>(
                     builder: (context, settings) {
                       return Text(
                         description,

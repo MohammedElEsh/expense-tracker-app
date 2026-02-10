@@ -247,7 +247,10 @@ class Account {
   /// Helper function to get const IconData from codePoint based on AccountType
   /// If the codePoint matches the AccountType's default icon, returns that const icon
   /// Otherwise returns null (caller should use AccountType's default icon)
-  static IconData? _getIconFromCodePoint(int codePoint, AccountType accountType) {
+  static IconData? _getIconFromCodePoint(
+    int codePoint,
+    AccountType accountType,
+  ) {
     final defaultIcon = accountType.icon;
     // If the stored codePoint matches the AccountType's icon, return the const icon
     if (defaultIcon.codePoint == codePoint) {
@@ -294,9 +297,11 @@ class Account {
                 : accountType.defaultColor,
         // Use default icon if not provided or invalid
         // Check if stored icon codePoint matches AccountType's default icon (for const safety)
-        icon: (map['icon'] != null && map['icon'] is int)
-            ? _getIconFromCodePoint(map['icon'] as int, accountType) ?? accountType.icon
-            : accountType.icon,
+        icon:
+            (map['icon'] != null && map['icon'] is int)
+                ? _getIconFromCodePoint(map['icon'] as int, accountType) ??
+                    accountType.icon
+                : accountType.icon,
         isActive: map['isActive'] ?? true,
         includeInTotal: map['includeInTotal'] ?? true,
         creditLimit: creditLimit,

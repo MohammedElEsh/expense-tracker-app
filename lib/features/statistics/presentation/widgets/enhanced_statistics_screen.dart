@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/tabs/weekly_statistics_tab.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/tabs/monthly_statistics_tab.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/tabs/yearly_statistics_tab.dart';
@@ -41,9 +41,9 @@ class _EnhancedStatisticsScreenState extends State<EnhancedStatisticsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
-        return BlocBuilder<ExpenseBloc, ExpenseState>(
+        return BlocBuilder<ExpenseCubit, ExpenseState>(
           builder: (context, expenseState) {
             final isRTL = settings.language == 'ar';
 

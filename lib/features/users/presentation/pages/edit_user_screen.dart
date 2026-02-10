@@ -55,7 +55,9 @@ class _EditUserScreenState extends State<EditUserScreen> {
     if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isRTL ? 'خطأ: معرف المستخدم غير موجود' : 'Error: User ID not found'),
+          content: Text(
+            isRTL ? 'خطأ: معرف المستخدم غير موجود' : 'Error: User ID not found',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -98,22 +100,21 @@ class _EditUserScreenState extends State<EditUserScreen> {
         if (e is ValidationException) {
           errorMessage = e.message;
         } else if (e is NetworkException) {
-          errorMessage = isRTL
-              ? 'خطأ في الاتصال بالشبكة'
-              : 'Network error. Please check your connection.';
+          errorMessage =
+              isRTL
+                  ? 'خطأ في الاتصال بالشبكة'
+                  : 'Network error. Please check your connection.';
         } else if (e is ServerException) {
           errorMessage = e.message;
         } else {
-          errorMessage = isRTL
-              ? 'فشل تحديث المستخدم'
-              : 'Failed to update user: ${e.toString()}';
+          errorMessage =
+              isRTL
+                  ? 'فشل تحديث المستخدم'
+                  : 'Failed to update user: ${e.toString()}';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -241,46 +242,46 @@ class _EditUserScreenState extends State<EditUserScreen> {
               // Role Options (employee, accountant, auditor - owner not available for editing)
               ...UserRole.values
                   .where((role) => role != UserRole.owner)
-                  .map((role) => RadioListTile<UserRole>(
-                        title: Text(role.getDisplayName(isRTL)),
-                        subtitle: Text(
-                          role.getDescription(isRTL),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        value: role,
-                        groupValue: _selectedRole == UserRole.owner
-                            ? UserRole.employee
-                            : _selectedRole,
-                        onChanged: isOwner
-                            ? null
-                            : (value) {
+                  .map(
+                    (role) => RadioListTile<UserRole>(
+                      title: Text(role.getDisplayName(isRTL)),
+                      subtitle: Text(
+                        role.getDescription(isRTL),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      value: role,
+                      groupValue:
+                          _selectedRole == UserRole.owner
+                              ? UserRole.employee
+                              : _selectedRole,
+                      onChanged:
+                          isOwner
+                              ? null
+                              : (value) {
                                 if (value != null) {
                                   setState(() {
                                     _selectedRole = value;
                                   });
                                 }
                               },
-                        secondary: Icon(
-                          role.icon,
-                          color: role.color,
-                        ),
-                      )),
+                      secondary: Icon(role.icon, color: role.color),
+                    ),
+                  ),
 
               const SizedBox(height: 32),
 
               // Submit Button
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _handleSubmit,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(
-                  isRTL ? 'حفظ التغييرات' : 'Save Changes',
-                ),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.save),
+                label: Text(isRTL ? 'حفظ التغييرات' : 'Save Changes'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,

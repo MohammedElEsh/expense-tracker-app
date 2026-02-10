@@ -1,11 +1,9 @@
 // Settings - Data Management Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_event.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_event.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'modern_settings_card.dart';
 
 class DataManagementCard extends StatelessWidget {
@@ -47,7 +45,7 @@ class DataManagementCard extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      context.read<ExpenseBloc>().add(const LoadExpenses());
+      context.read<ExpenseCubit>().loadExpenses();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,9 +60,9 @@ class DataManagementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expenseState = context.watch<ExpenseBloc>().state;
+    final expenseState = context.watch<ExpenseCubit>().state;
 
-    return BlocListener<SettingsBloc, SettingsState>(
+    return BlocListener<SettingsCubit, SettingsState>(
       listenWhen: (previous, current) {
         // Listen for successful reset completion (was loading, now not loading, no error)
         return previous.isLoading &&
@@ -138,7 +136,7 @@ class DataManagementCard extends StatelessWidget {
             // Reset Settings Button
             SizedBox(
               width: double.infinity,
-              child: BlocBuilder<SettingsBloc, SettingsState>(
+              child: BlocBuilder<SettingsCubit, SettingsState>(
                 builder: (context, state) {
                   final isLoading = state.isLoading;
                   return ElevatedButton.icon(
@@ -238,7 +236,7 @@ class DataManagementCard extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       // Dispatch ResetSettings event
-      context.read<SettingsBloc>().add(const ResetSettings());
+      context.read<SettingsCubit>().resetSettings();
     }
   }
 }

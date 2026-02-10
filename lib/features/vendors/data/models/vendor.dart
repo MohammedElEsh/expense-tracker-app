@@ -325,12 +325,14 @@ class Vendor extends HiveObject {
         contactPerson: json['contactPerson'],
         bankAccount: json['bankAccount'],
         notes: json['notes'],
-        totalSpent: (json['totalSpent'] is num)
-            ? (json['totalSpent'] as num).toDouble()
-            : 0.0,
-        transactionCount: json['transactionCount'] is int
-            ? json['transactionCount'] as int
-            : 0,
+        totalSpent:
+            (json['totalSpent'] is num)
+                ? (json['totalSpent'] as num).toDouble()
+                : 0.0,
+        transactionCount:
+            json['transactionCount'] is int
+                ? json['transactionCount'] as int
+                : 0,
         createdAt: parseDate(json['createdAt']) ?? DateTime.now(),
         updatedAt: parseDate(json['updatedAt']),
         lastTransactionDate: parseDate(json['lastTransactionDate']),

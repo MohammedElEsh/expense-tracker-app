@@ -2,13 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_card.dart';
-import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog_refactored.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:expense_tracker/features/vendors/presentation/pages/vendor_details_screen.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/list/vendors_search_filter.dart';
 
@@ -117,7 +118,7 @@ class _VendorsScreenState extends State<VendorsScreen>
   Future<void> _showVendorDialog({Vendor? vendor}) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => VendorDialogRefactored(vendor: vendor),
+      builder: (context) => VendorDialog(vendor: vendor),
     );
 
     if (result == true) {
@@ -131,7 +132,7 @@ class _VendorsScreenState extends State<VendorsScreen>
                   ? 'تم إضافة المورد بنجاح'
                   : 'تم تحديث المورد بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -155,7 +156,7 @@ class _VendorsScreenState extends State<VendorsScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
                 child: const Text('حذف'),
               ),
             ],
@@ -191,7 +192,7 @@ class _VendorsScreenState extends State<VendorsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 
@@ -201,9 +202,12 @@ class _VendorsScreenState extends State<VendorsScreen>
             appBar: AppBar(
               title: Text(
                 isRTL ? 'إدارة الموردين' : 'Vendor Management',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: AppTypography.headlineMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               actions: [
                 IconButton(
@@ -265,7 +269,7 @@ class _VendorsScreenState extends State<VendorsScreen>
                     ),
             floatingActionButton: FloatingActionButton(
               onPressed: () => _showVendorDialog(),
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
@@ -308,11 +312,17 @@ class _VendorsScreenState extends State<VendorsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.store_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            const Icon(
+              Icons.store_outlined,
+              size: 64,
+              color: AppColors.textDisabledLight,
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               isRTL ? 'لا يوجد موردين' : 'No vendors',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -320,7 +330,7 @@ class _VendorsScreenState extends State<VendorsScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: vendors.length,
       itemBuilder: (context, index) {
         final vendor = vendors[index];
@@ -340,17 +350,19 @@ class _VendorsScreenState extends State<VendorsScreen>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
           Text(
             isRTL ? 'إحصائيات الموردين' : 'Vendor Statistics',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: AppTypography.displaySmall.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             '${_statistics!['totalVendors'] ?? 0} ${isRTL ? "مورد" : "vendors"}',
-            style: const TextStyle(fontSize: 18),
+            style: AppTypography.headlineSmall,
           ),
         ],
       ),

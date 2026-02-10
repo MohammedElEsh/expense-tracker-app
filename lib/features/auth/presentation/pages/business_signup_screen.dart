@@ -1,9 +1,8 @@
-// ✅ Business Signup Screen - Refactored with BLoC
+// ✅ Business Signup Screen - Refactored with Cubit
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_bloc.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_event.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_state.dart';
+import 'package:expense_tracker/features/auth/presentation/cubit/signup_cubit.dart';
+import 'package:expense_tracker/features/auth/presentation/cubit/signup_state.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/company_name_field.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/name_field.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/email_field.dart';
@@ -42,13 +41,11 @@ class _BusinessSignupScreenState extends State<BusinessSignupScreen> {
   void _handleSignup(BuildContext context, bool isRTL) {
     if (!_formKey.currentState!.validate()) return;
 
-    context.read<SignupBloc>().add(
-      SignupBusinessRequested(
-        companyName: _companyNameController.text.trim(),
-        adminName: _adminNameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      ),
+    context.read<SignupCubit>().signupBusiness(
+      companyName: _companyNameController.text.trim(),
+      adminName: _adminNameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
     );
   }
 
@@ -58,8 +55,8 @@ class _BusinessSignupScreenState extends State<BusinessSignupScreen> {
     final theme = Theme.of(context);
 
     return BlocProvider(
-      create: (context) => SignupBloc(),
-      child: BlocConsumer<SignupBloc, SignupState>(
+      create: (context) => SignupCubit(),
+      child: BlocConsumer<SignupCubit, SignupState>(
         listener: (context, state) {
           if (state.isSuccess) {
             Navigator.of(context).pushAndRemoveUntil(

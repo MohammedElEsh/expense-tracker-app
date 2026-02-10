@@ -1,12 +1,13 @@
 // ✅ Monthly Statistics Tab - Refactored & Clean
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/monthly/monthly_total_card.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/monthly/monthly_budget_message_card.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/monthly/monthly_spending_trend_chart.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/monthly/monthly_category_pie_chart.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/monthly/monthly_category_breakdown_list.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class MonthlyStatisticsTab extends StatelessWidget {
   final ExpenseState expenseState;
@@ -47,7 +48,7 @@ class MonthlyStatisticsTab extends StatelessWidget {
     final List<double> last6MonthsData = _calculateLast6MonthsData();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -59,12 +60,12 @@ class MonthlyStatisticsTab extends StatelessWidget {
             isRTL: isRTL,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
 
           // 2. Budget Message Card
           MonthlyBudgetMessageCard(selectedMonth: selectedMonth, isRTL: isRTL),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
 
           // 3. Spending Trend Chart (Last 6 Months)
           MonthlySpendingTrendChart(
@@ -74,7 +75,7 @@ class MonthlyStatisticsTab extends StatelessWidget {
             selectedMonth: selectedMonth,
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
 
           // 4. Category Distribution
           if (categoryTotals.isNotEmpty) ...[
@@ -84,7 +85,7 @@ class MonthlyStatisticsTab extends StatelessWidget {
               settings: settings,
               isRTL: isRTL,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxl),
             MonthlyCategoryBreakdownList(
               categoryTotals: categoryTotals,
               monthlyTotal: monthlyTotal,
@@ -94,20 +95,28 @@ class MonthlyStatisticsTab extends StatelessWidget {
           ] else
             Center(
               child: Padding(
-                padding: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(AppSpacing.xxxl),
                 child: Column(
                   children: [
                     Icon(
                       Icons.pie_chart_outline,
                       size: 64,
-                      color: Colors.grey[400],
+                      color:
+                          settings.isDarkMode
+                              ? AppColors.textDisabledDark
+                              : AppColors.textDisabledLight,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
                       isRTL
                           ? 'لا توجد نفقات هذا الشهر'
                           : 'No expenses this month',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      style: AppTypography.bodyLarge.copyWith(
+                        color:
+                            settings.isDarkMode
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight,
+                      ),
                     ),
                   ],
                 ),

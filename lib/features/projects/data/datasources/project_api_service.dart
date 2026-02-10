@@ -41,9 +41,11 @@ class ProjectReport {
   List<Expense> get expenseObjects {
     try {
       return expenses.map((expenseJson) {
-        return Expense.fromApiJson(expenseJson);
-      }).toList()
-        ..sort((a, b) => b.date.compareTo(a.date)); // Sort by date, newest first
+          return Expense.fromApiJson(expenseJson);
+        }).toList()
+        ..sort(
+          (a, b) => b.date.compareTo(a.date),
+        ); // Sort by date, newest first
     } catch (e) {
       debugPrint('❌ Error converting expenses to Expense objects: $e');
       return [];
@@ -258,7 +260,6 @@ class ProjectApiService {
 
         // Clear cache to force fresh reload
         clearCache();
-
 
         debugPrint('✅ Project created successfully: ${newProject.id}');
         return newProject;
@@ -550,7 +551,6 @@ class ProjectApiService {
         // Clear cache
         clearCache();
 
-
         debugPrint('✅ Project updated successfully');
         return updatedProject;
       }
@@ -592,8 +592,6 @@ class ProjectApiService {
         // Clear cache
         clearCache();
 
-
-
         debugPrint('✅ Project deleted successfully');
         return;
       }
@@ -621,7 +619,6 @@ class ProjectApiService {
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
-
 
   // ===========================================================================
   // CONVENIENCE METHODS

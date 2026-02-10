@@ -194,8 +194,11 @@ class Project extends HiveObject {
   factory Project.fromApiJson(Map<String, dynamic> json) {
     try {
       // Handle _id from MongoDB
-      final id = json['_id']?.toString() ?? json['id']?.toString() ?? const Uuid().v4();
-      
+      final id =
+          json['_id']?.toString() ??
+          json['id']?.toString() ??
+          const Uuid().v4();
+
       // Parse status - API returns lowercase string
       final statusString = json['status']?.toString().toLowerCase();
       final status = ProjectStatus.values.firstWhere(
@@ -206,7 +209,8 @@ class Project extends HiveObject {
       // Parse dates - API returns ISO8601 strings
       DateTime startDate = DateTime.now();
       if (json['startDate'] != null) {
-        startDate = DateTime.tryParse(json['startDate'].toString()) ?? DateTime.now();
+        startDate =
+            DateTime.tryParse(json['startDate'].toString()) ?? DateTime.now();
       }
 
       DateTime? endDate;
@@ -216,7 +220,8 @@ class Project extends HiveObject {
 
       DateTime createdAt = DateTime.now();
       if (json['createdAt'] != null) {
-        createdAt = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+        createdAt =
+            DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
       }
 
       DateTime? updatedAt;

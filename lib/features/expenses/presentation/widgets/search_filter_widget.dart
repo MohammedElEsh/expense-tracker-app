@@ -2,33 +2,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_filter_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_filter_event.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_filter_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_filter_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_filter_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/filter/expense_search_bar.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/filter/category_filter_chip.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/filter/date_range_filter.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/filter/amount_range_filter.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/filter/filter_summary.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 
-class SearchFilterWidgetRefactored extends StatefulWidget {
+class SearchFilterWidget extends StatefulWidget {
   final List<Expense> expenses;
   final Function(List<Expense>) onFilteredExpenses;
 
-  const SearchFilterWidgetRefactored({
+  const SearchFilterWidget({
     super.key,
     required this.expenses,
     required this.onFilteredExpenses,
   });
 
   @override
-  State<SearchFilterWidgetRefactored> createState() =>
-      _SearchFilterWidgetRefactoredState();
+  State<SearchFilterWidget> createState() => _SearchFilterWidgetState();
 }
 
-class _SearchFilterWidgetRefactoredState
-    extends State<SearchFilterWidgetRefactored>
+class _SearchFilterWidgetState extends State<SearchFilterWidget>
     with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -69,12 +66,12 @@ class _SearchFilterWidgetRefactoredState
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsBloc>().state;
+    final settings = context.watch<SettingsCubit>().state;
     final isRTL = settings.language == 'ar';
 
     return BlocProvider(
-      create: (context) => ExpenseFilterBloc(allExpenses: widget.expenses),
-      child: BlocConsumer<ExpenseFilterBloc, ExpenseFilterState>(
+      create: (context) => ExpenseFilterCubit(allExpenses: widget.expenses),
+      child: BlocConsumer<ExpenseFilterCubit, ExpenseFilterState>(
         listener: (context, state) {
           // تحديث المصروفات المفلترة
           widget.onFilteredExpenses(state.filteredExpenses);
@@ -96,15 +93,11 @@ class _SearchFilterWidgetRefactoredState
                 focusNode: _searchFocus,
                 isRTL: isRTL,
                 onFilterToggle: () {
-                  context.read<ExpenseFilterBloc>().add(
-                    const ToggleFilterVisibilityEvent(),
-                  );
+                  context.read<ExpenseFilterCubit>().toggleFilterVisibility();
                 },
                 activeFilterCount: filterState.activeFilterCount,
                 onSearchChanged: (query) {
-                  context.read<ExpenseFilterBloc>().add(
-                    ChangeSearchQueryEvent(query),
-                  );
+                  context.read<ExpenseFilterCubit>().changeSearchQuery(query);
                 },
               ),
 
@@ -122,8 +115,8 @@ class _SearchFilterWidgetRefactoredState
                       categories: _categories,
                       isRTL: isRTL,
                       onCategoryChanged: (category) {
-                        context.read<ExpenseFilterBloc>().add(
-                          ChangeCategoryFilterEvent(category),
+                        context.read<ExpenseFilterCubit>().changeCategoryFilter(
+                          category,
                         );
                       },
                     ),
@@ -135,9 +128,9 @@ class _SearchFilterWidgetRefactoredState
                       dateRange: filterState.dateRange,
                       isRTL: isRTL,
                       onDateRangeChanged: (dateRange) {
-                        context.read<ExpenseFilterBloc>().add(
-                          ChangeDateRangeFilterEvent(dateRange),
-                        );
+                        context
+                            .read<ExpenseFilterCubit>()
+                            .changeDateRangeFilter(dateRange);
                       },
                     ),
 
@@ -150,20 +143,20 @@ class _SearchFilterWidgetRefactoredState
                       isRTL: isRTL,
                       currencySymbol: settings.currencySymbol,
                       onMinAmountChanged: (minAmount) {
-                        context.read<ExpenseFilterBloc>().add(
-                          ChangeAmountRangeFilterEvent(
-                            minAmount: minAmount,
-                            maxAmount: filterState.maxAmount,
-                          ),
-                        );
+                        context
+                            .read<ExpenseFilterCubit>()
+                            .changeAmountRangeFilter(
+                              minAmount: minAmount,
+                              maxAmount: filterState.maxAmount,
+                            );
                       },
                       onMaxAmountChanged: (maxAmount) {
-                        context.read<ExpenseFilterBloc>().add(
-                          ChangeAmountRangeFilterEvent(
-                            minAmount: filterState.minAmount,
-                            maxAmount: maxAmount,
-                          ),
-                        );
+                        context
+                            .read<ExpenseFilterCubit>()
+                            .changeAmountRangeFilter(
+                              minAmount: filterState.minAmount,
+                              maxAmount: maxAmount,
+                            );
                       },
                     ),
 
@@ -181,9 +174,7 @@ class _SearchFilterWidgetRefactoredState
                 isRTL: isRTL,
                 onResetFilters: () {
                   _searchController.clear();
-                  context.read<ExpenseFilterBloc>().add(
-                    const ResetFiltersEvent(),
-                  );
+                  context.read<ExpenseFilterCubit>().resetFilters();
                 },
                 hasActiveFilters: filterState.hasActiveFilters,
               ),

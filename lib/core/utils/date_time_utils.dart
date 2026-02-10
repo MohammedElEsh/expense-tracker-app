@@ -23,10 +23,15 @@ class DateTimeUtils {
         return parsed.isUtc ? parsed.toLocal() : parsed;
       } else if (dateValue is int) {
         // Parse milliseconds since epoch (assume UTC if > threshold)
-        return DateTime.fromMillisecondsSinceEpoch(dateValue, isUtc: true).toLocal();
+        return DateTime.fromMillisecondsSinceEpoch(
+          dateValue,
+          isUtc: true,
+        ).toLocal();
       }
     } catch (e) {
-      debugPrint('❌ DateTimeUtils.parseApiDateTime error: $e for value: $dateValue');
+      debugPrint(
+        '❌ DateTimeUtils.parseApiDateTime error: $e for value: $dateValue',
+      );
     }
 
     return DateTime.now();
@@ -40,16 +45,16 @@ class DateTimeUtils {
     bool isRTL = false,
   }) {
     final locale = isRTL ? 'ar' : 'en';
-    
+
     // Date part from expense.date
     final datePart = DateFormat('dd MMM yyyy', locale).format(expenseDate);
-    
+
     // Time part from createdAt (if available), otherwise don't show time
     if (createdAt != null) {
       final timePart = DateFormat('h:mm a', locale).format(createdAt);
       return '$datePart • $timePart';
     }
-    
+
     // If no createdAt, just show date (like Details view does)
     return datePart;
   }

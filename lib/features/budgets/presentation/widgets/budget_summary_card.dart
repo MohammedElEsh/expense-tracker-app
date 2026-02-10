@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class BudgetSummaryCard extends StatelessWidget {
   final double totalBudget;
@@ -22,22 +23,31 @@ class BudgetSummaryCard extends StatelessWidget {
     final percentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0.0;
     final isOverBudget = totalSpent > totalBudget;
 
+    final overBudgetColor =
+        settings.isDarkMode ? AppColors.darkError : AppColors.error;
+    final normalColor =
+        settings.isDarkMode ? AppColors.darkPrimary : AppColors.primary;
+    final overBudgetGradientEnd =
+        settings.isDarkMode ? const Color(0xFFB71C1C) : const Color(0xFFD32F2F);
+    final normalGradientEnd =
+        settings.isDarkMode ? AppColors.darkPrimaryDark : AppColors.primaryDark;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors:
               isOverBudget
-                  ? [Colors.red, Colors.red.shade700]
-                  : [Colors.blue, Colors.blue.shade700],
+                  ? [overBudgetColor, overBudgetGradientEnd]
+                  : [normalColor, normalGradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: (isOverBudget ? Colors.red : Colors.blue).withValues(
+            color: (isOverBudget ? overBudgetColor : normalColor).withValues(
               alpha: 0.3,
             ),
             blurRadius: 12,
@@ -55,15 +65,16 @@ class BudgetSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     isRTL ? 'إجمالي الميزانية' : 'Total Budget',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Colors.white70,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     '${totalBudget.toStringAsFixed(2)} ${settings.currencySymbol}',
-                    style: const TextStyle(
+                    style: AppTypography.amountSmall.copyWith(
                       color: Colors.white,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -73,41 +84,45 @@ class BudgetSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     isRTL ? 'المتبقي' : 'Remaining',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Colors.white70,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     '${remaining.toStringAsFixed(2)} ${settings.currencySymbol}',
-                    style: TextStyle(
-                      color: isOverBudget ? Colors.red.shade200 : Colors.white,
+                    style: AppTypography.amountSmall.copyWith(
+                      color:
+                          isOverBudget
+                              ? Colors.white.withOpacity(0.7)
+                              : Colors.white,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           LinearProgressIndicator(
             value: percentage / 100,
             backgroundColor: Colors.white.withValues(alpha: 0.3),
             valueColor: AlwaysStoppedAnimation<Color>(
-              isOverBudget ? Colors.red.shade200 : Colors.white,
+              isOverBudget ? Colors.white.withOpacity(0.7) : Colors.white,
             ),
-            minHeight: 8,
+            minHeight: AppSpacing.xs,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${percentage.toStringAsFixed(1)}% ${isRTL ? 'مستخدم' : 'Used'}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: AppTypography.bodySmall.copyWith(color: Colors.white70),
               ),
               Text(
                 '${totalSpent.toStringAsFixed(2)} ${settings.currencySymbol}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: AppTypography.bodySmall.copyWith(color: Colors.white70),
               ),
             ],
           ),

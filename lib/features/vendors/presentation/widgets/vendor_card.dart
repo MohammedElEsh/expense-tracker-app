@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class VendorCard extends StatelessWidget {
   final Vendor vendor;
@@ -21,14 +22,16 @@ class VendorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: AppSpacing.elevationMd,
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -37,34 +40,33 @@ class VendorCard extends StatelessWidget {
                 children: [
                   // Type Indicator
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: vendor.type.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
                     child: Icon(
                       vendor.type.icon,
                       color: vendor.type.color,
-                      size: 20,
+                      size: AppSpacing.iconSm,
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
 
                   // Status Indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: AppSpacing.xs,
+                      vertical: AppSpacing.xxs,
                     ),
                     decoration: BoxDecoration(
                       color: vendor.status.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                     child: Text(
                       vendor.status.getDisplayName(isRTL),
-                      style: TextStyle(
-                        fontSize: 11,
+                      style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: vendor.status.color,
                       ),
@@ -88,13 +90,15 @@ class VendorCard extends StatelessWidget {
                               children: [
                                 const Icon(
                                   Icons.delete,
-                                  color: Colors.red,
+                                  color: AppColors.error,
                                   size: 18,
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: AppSpacing.xs),
                                 Text(
                                   isRTL ? 'حذف' : 'Delete',
-                                  style: const TextStyle(color: Colors.red),
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                  ),
                                 ),
                               ],
                             ),
@@ -103,37 +107,35 @@ class VendorCard extends StatelessWidget {
                     child: Icon(
                       Icons.more_vert,
                       color: context.iconColor,
-                      size: 20,
+                      size: AppSpacing.iconSm,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Vendor Name
               Text(
                 vendor.displayName,
-                style: TextStyle(
-                  fontSize: 18,
+                style: AppTypography.headlineSmall.copyWith(
                   fontWeight: FontWeight.bold,
                   color: context.primaryTextColor,
                 ),
               ),
 
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
 
               // Type
               Text(
                 vendor.type.getDisplayName(isRTL),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: vendor.type.color,
+                style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w500,
+                  color: vendor.type.color,
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Contact Info
               if (vendor.contactInfo != null) ...[
@@ -141,15 +143,15 @@ class VendorCard extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.contact_phone,
-                      size: 16,
+                      size: AppSpacing.iconXs,
                       color: context.iconColor,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         vendor.contactInfo!,
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.w500,
                           color: context.secondaryTextColor,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -157,20 +159,24 @@ class VendorCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
               ],
 
               // Address
               if (vendor.address?.isNotEmpty == true) ...[
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: context.iconColor),
+                    Icon(
+                      Icons.location_on,
+                      size: AppSpacing.iconXs,
+                      color: context.iconColor,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         vendor.address!,
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.w500,
                           color: context.secondaryTextColor,
                         ),
                         maxLines: 2,
@@ -179,15 +185,15 @@ class VendorCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
               ],
 
               // Financial Info
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
                   color: context.backgroundCardColor,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                   border: Border.all(color: context.borderColor),
                 ),
                 child: Column(
@@ -197,16 +203,14 @@ class VendorCard extends StatelessWidget {
                       children: [
                         Text(
                           isRTL ? 'إجمالي المصروفات:' : 'Total Spent:',
-                          style: TextStyle(
-                            fontSize: 13,
+                          style: AppTypography.bodySmall.copyWith(
                             fontWeight: FontWeight.w500,
                             color: context.secondaryTextColor,
                           ),
                         ),
                         Text(
                           '${vendor.totalSpent.toStringAsFixed(2)} ر.س',
-                          style: TextStyle(
-                            fontSize: 15,
+                          style: AppTypography.titleSmall.copyWith(
                             fontWeight: FontWeight.bold,
                             color: context.infoColor,
                           ),
@@ -214,23 +218,21 @@ class VendorCard extends StatelessWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           isRTL ? 'عدد المعاملات:' : 'Transactions:',
-                          style: TextStyle(
-                            fontSize: 13,
+                          style: AppTypography.bodySmall.copyWith(
                             fontWeight: FontWeight.w500,
                             color: context.secondaryTextColor,
                           ),
                         ),
                         Text(
                           '${vendor.transactionCount}',
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: AppTypography.bodyMedium.copyWith(
                             fontWeight: FontWeight.bold,
                             color: context.successColor,
                           ),
@@ -239,22 +241,20 @@ class VendorCard extends StatelessWidget {
                     ),
 
                     if (vendor.transactionCount > 0) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.xs),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             isRTL ? 'متوسط المعاملة:' : 'Avg Transaction:',
-                            style: TextStyle(
-                              fontSize: 13,
+                            style: AppTypography.bodySmall.copyWith(
                               fontWeight: FontWeight.w500,
                               color: context.secondaryTextColor,
                             ),
                           ),
                           Text(
                             '${vendor.averageTransactionValue.toStringAsFixed(0)} ر.س',
-                            style: TextStyle(
-                              fontSize: 14,
+                            style: AppTypography.bodyMedium.copyWith(
                               fontWeight: FontWeight.bold,
                               color:
                                   context.isDarkMode
@@ -269,7 +269,7 @@ class VendorCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
 
               // Last Transaction
               if (vendor.lastTransactionDate != null) ...[
@@ -279,8 +279,7 @@ class VendorCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       '${isRTL ? 'آخر معاملة:' : 'Last transaction:'} ${_formatLastTransaction()}',
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTypography.bodySmall.copyWith(
                         color: context.tertiaryTextColor,
                       ),
                     ),
@@ -291,18 +290,19 @@ class VendorCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
-                          vertical: 2,
+                          vertical: AppSpacing.xxxs,
                         ),
                         decoration: BoxDecoration(
                           color: _getLastTransactionColor().withValues(
                             alpha: 0.1,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: Text(
                           '${vendor.daysSinceLastTransaction} ${isRTL ? 'يوم' : 'days ago'}',
-                          style: TextStyle(
-                            fontSize: 10,
+                          style: AppTypography.overline.copyWith(
                             fontWeight: FontWeight.w600,
                             color: _getLastTransactionColor(),
                           ),
@@ -326,10 +326,10 @@ class VendorCard extends StatelessWidget {
 
   Color _getLastTransactionColor() {
     final days = vendor.daysSinceLastTransaction;
-    if (days == null) return Colors.grey;
+    if (days == null) return AppColors.iconLight;
 
-    if (days <= 7) return Colors.green;
-    if (days <= 30) return Colors.orange;
-    return Colors.red;
+    if (days <= 7) return AppColors.success;
+    if (days <= 30) return AppColors.warning;
+    return AppColors.error;
   }
 }

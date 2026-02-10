@@ -4,16 +4,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
 import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 // Import Widgets
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_header_card.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_status_frequency_card.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_schedule_card.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_details_card.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_dialog_refactored.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_dialog.dart';
 
 class RecurringExpenseDetailsScreen extends StatefulWidget {
   final RecurringExpense recurringExpense;
@@ -65,7 +65,7 @@ class _RecurringExpenseDetailsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final isDesktop = context.isDesktop;
@@ -155,9 +155,9 @@ class _RecurringExpenseDetailsScreenState
   Future<void> _navigateToDetails(BuildContext context) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => RecurringExpenseDialogRefactored(
-        recurringExpense: widget.recurringExpense,
-      ),
+      builder:
+          (context) =>
+              RecurringExpenseDialog(recurringExpense: widget.recurringExpense),
     );
 
     if (result == true && mounted) {

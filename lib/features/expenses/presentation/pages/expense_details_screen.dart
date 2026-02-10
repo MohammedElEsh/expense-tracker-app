@@ -7,19 +7,19 @@ import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 
+import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
 import 'package:expense_tracker/features/users/data/models/user.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_event.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog_refactored.dart';
+import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog.dart';
 
 // Import Widgets
 import 'package:expense_tracker/features/expenses/presentation/widgets/details/expense_header_card.dart';
@@ -108,12 +108,16 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: AppSpacing.iconSm,
+                ),
+                const SizedBox(width: AppSpacing.xs),
                 Expanded(child: Text(errorMessage)),
               ],
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -150,7 +154,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
         debugPrint('✅ Loaded vendor name: ${_currentExpense.vendorName}');
       }
 
-      // Load employee name from UserBloc
+      // Load employee name from UserCubit
       if (_currentExpense.employeeId != null &&
           _currentExpense.employeeId!.isNotEmpty) {
         await _tryLoadEmployeeFromUsers();
@@ -158,7 +162,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
 
       // تحميل معلومات الحساب
       if (!mounted) return;
-      final accountState = context.read<AccountBloc>().state;
+      final accountState = context.read<AccountCubit>().state;
       final account = accountState.getAccountById(_currentExpense.accountId);
       if (account != null && mounted) {
         setState(() => _account = account);
@@ -183,9 +187,9 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
-        return BlocBuilder<UserBloc, UserState>(
+        return BlocBuilder<UserCubit, UserState>(
           builder: (context, userState) {
             final isRTL = settings.language == 'ar';
             final currentUser = userState.currentUser;
@@ -201,7 +205,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                 appBar: AppBar(
                   title: Text(
                     isRTL ? 'تفاصيل المصروف' : 'Expense Details',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: AppTypography.headlineSmall,
                   ),
                   actions: [
                     // زر القائمة
@@ -222,8 +226,16 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                                 value: 'edit',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.edit,color: Colors.black, size: 20),
-                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.edit,
+                                      color:
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? AppColors.textPrimaryDark
+                                              : AppColors.textPrimaryLight,
+                                      size: AppSpacing.iconSm,
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
                                     Text(isRTL ? 'تعديل' : 'Edit'),
                                   ],
                                 ),
@@ -233,15 +245,15 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                                 value: 'delete',
                                 child: Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.delete,
-                                      color: Colors.red,
-                                      size: 20,
+                                      color: AppColors.error,
+                                      size: AppSpacing.iconSm,
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpacing.xs),
                                     Text(
                                       isRTL ? 'حذف' : 'Delete',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: TextStyle(color: AppColors.error),
                                     ),
                                   ],
                                 ),
@@ -267,36 +279,43 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                           onRefresh: _refreshExpense,
                           child: SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Show refresh error if any
                                 if (_refreshError != null)
                                   Container(
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    padding: const EdgeInsets.all(12),
+                                    margin: const EdgeInsets.only(
+                                      bottom: AppSpacing.md,
+                                    ),
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.sm,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.red[50],
-                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.errorLight,
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusSm,
+                                      ),
                                       border: Border.all(
-                                        color: Colors.red[300]!,
+                                        color: AppColors.error.withOpacity(0.5),
                                       ),
                                     ),
                                     child: Row(
                                       children: [
                                         Icon(
                                           Icons.error_outline,
-                                          color: Colors.red[700],
-                                          size: 20,
+                                          color: AppColors.error,
+                                          size: AppSpacing.iconSm,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: AppSpacing.xs),
                                         Expanded(
                                           child: Text(
                                             _refreshError!,
-                                            style: TextStyle(
-                                              color: Colors.red[700],
-                                            ),
+                                            style: AppTypography.bodyMedium
+                                                .copyWith(
+                                                  color: AppColors.error,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -309,14 +328,14 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                                   isRTL: isRTL,
                                   currency: settings.currency,
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: AppSpacing.xl),
 
                                 // التفاصيل الأساسية
                                 ExpenseBasicDetailsCard(
                                   expense: _currentExpense,
                                   isRTL: isRTL,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.md),
 
                                 // الحساب البنكي
                                 if (_account != null) ...[
@@ -325,7 +344,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                                     isRTL: isRTL,
                                     currency: settings.currency,
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: AppSpacing.md),
                                 ],
 
                                 // صورة الإيصال
@@ -335,7 +354,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                                     isRTL: isRTL,
                                     onViewFullImage: _viewFullImage,
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: AppSpacing.md),
                                 ],
 
                                 // معلومات إضافية (تشمل التفاصيل التجارية)
@@ -423,7 +442,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
     final result = await Navigator.of(context).push<Expense>(
       MaterialPageRoute(
         builder:
-            (context) => AddExpenseDialogRefactored(
+            (context) => AddExpenseDialog(
               selectedDate: _currentExpense.date,
               expenseToEdit: _currentExpense,
             ),
@@ -436,7 +455,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
       await _refreshExpense();
 
       // Refresh expenses list
-      context.read<ExpenseBloc>().add(const LoadExpenses());
+      context.read<ExpenseCubit>().loadExpenses();
     }
   }
 
@@ -459,7 +478,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(isRTL ? 'حذف' : 'Delete'),
@@ -471,7 +490,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
     if (confirmed == true && mounted) {
       try {
         // Delete expense via BLoC
-        context.read<ExpenseBloc>().add(DeleteExpense(_currentExpense.id));
+        context.read<ExpenseCubit>().deleteExpense(_currentExpense.id);
 
         // Navigate back to expenses list
         if (mounted) {
@@ -482,8 +501,12 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
             SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: AppSpacing.iconSm,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
                     isRTL
                         ? 'تم حذف المصروف بنجاح'
@@ -491,7 +514,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                   ),
                 ],
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -503,7 +526,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
               content: Text(
                 isRTL ? 'حدث خطأ أثناء حذف المصروف' : 'Error deleting expense',
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -556,7 +579,7 @@ ${isRTL ? 'التاريخ' : 'Date'}: ${DateFormat('dd/MM/yyyy').format(_current
       try {
         // جرب البحث في users collection مباشرة
         if (!mounted) return;
-        final userState = context.read<UserBloc>().state;
+        final userState = context.read<UserCubit>().state;
         if (userState.users.isNotEmpty) {
           final employee = userState.users.firstWhere(
             (user) => user.id == _currentExpense.employeeId,
@@ -564,11 +587,11 @@ ${isRTL ? 'التاريخ' : 'Date'}: ${DateFormat('dd/MM/yyyy').format(_current
           );
           if (mounted) {
             setState(() => _employeeName = employee.name);
-            debugPrint('✅ تم تحميل اسم الموظف من UserBloc: ${employee.name}');
+            debugPrint('✅ تم تحميل اسم الموظف من UserCubit: ${employee.name}');
           }
         }
       } catch (e) {
-        debugPrint('❌ لم يتم العثور على الموظف في UserBloc: $e');
+        debugPrint('❌ لم يتم العثور على الموظف في UserCubit: $e');
       }
     }
   }

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/features/projects/data/models/project.dart';
 import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_name_field.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_budget_field.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_status_selector.dart';
@@ -15,17 +15,16 @@ import 'package:expense_tracker/features/projects/presentation/widgets/project_d
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_priority_slider.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_optional_fields.dart';
 
-class ProjectDialogRefactored extends StatefulWidget {
+class ProjectDialog extends StatefulWidget {
   final Project? project;
 
-  const ProjectDialogRefactored({super.key, this.project});
+  const ProjectDialog({super.key, this.project});
 
   @override
-  State<ProjectDialogRefactored> createState() =>
-      _ProjectDialogRefactoredState();
+  State<ProjectDialog> createState() => _ProjectDialogState();
 }
 
-class _ProjectDialogRefactoredState extends State<ProjectDialogRefactored> {
+class _ProjectDialogState extends State<ProjectDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -157,7 +156,7 @@ class _ProjectDialogRefactoredState extends State<ProjectDialogRefactored> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isRTL ? 'خطأ: $e' : 'Error: $e'),
@@ -174,7 +173,7 @@ class _ProjectDialogRefactoredState extends State<ProjectDialogRefactored> {
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.project != null;
 
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 

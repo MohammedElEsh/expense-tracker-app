@@ -5,18 +5,18 @@ import 'dart:ui' as ui;
 
 import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 // Import refactored widgets
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_header_card.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_statistics_section.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_info_card.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_expenses_section.dart';
-import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog_refactored.dart';
+import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
 
 class VendorDetailsScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final isDesktop = context.isDesktop;
@@ -108,7 +108,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: BlocBuilder<ExpenseBloc, ExpenseState>(
+                child: BlocBuilder<ExpenseCubit, ExpenseState>(
                   builder: (context, expenseState) {
                     final vendorExpenses = _getVendorExpenses(expenseState);
                     final totalExpenses = _getTotalExpenses(vendorExpenses);
@@ -182,7 +182,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
   Future<void> _showEditVendorDialog() async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => VendorDialogRefactored(vendor: _currentVendor),
+      builder: (context) => VendorDialog(vendor: _currentVendor),
     );
 
     if (result == true && mounted) {
@@ -206,7 +206,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
           _isRefreshing = false;
         });
 
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -224,7 +224,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isRefreshing = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

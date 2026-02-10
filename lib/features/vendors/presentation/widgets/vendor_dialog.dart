@@ -2,22 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
-class VendorDialogRefactored extends StatefulWidget {
+class VendorDialog extends StatefulWidget {
   final Vendor? vendor;
 
-  const VendorDialogRefactored({super.key, this.vendor});
+  const VendorDialog({super.key, this.vendor});
 
   @override
-  State<VendorDialogRefactored> createState() => _VendorDialogRefactoredState();
+  State<VendorDialog> createState() => _VendorDialogState();
 }
 
-class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
+class _VendorDialogState extends State<VendorDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _companyNameController = TextEditingController();
@@ -177,7 +177,7 @@ class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isRTL ? 'خطأ: $e' : 'Error: $e'),
@@ -194,7 +194,7 @@ class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.vendor != null;
 
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final theme = Theme.of(context);
@@ -456,24 +456,26 @@ class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
         prefixIcon: const Icon(Icons.category_outlined),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      items: VendorType.values.map((type) {
-        return DropdownMenuItem(
-          value: type,
-          child: Row(
-            children: [
-              Icon(type.icon, size: 18, color: type.color),
-              const SizedBox(width: 12),
-              Expanded( // This is the key: allows text to take remaining space
-                child: Text(
-                  isRTL ? type.arabicName : type.englishName,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1, // Ensures single-line with ellipsis
-                ),
+      items:
+          VendorType.values.map((type) {
+            return DropdownMenuItem(
+              value: type,
+              child: Row(
+                children: [
+                  Icon(type.icon, size: 18, color: type.color),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    // This is the key: allows text to take remaining space
+                    child: Text(
+                      isRTL ? type.arabicName : type.englishName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1, // Ensures single-line with ellipsis
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
       onChanged: (value) {
         if (value != null) {
           setState(() => _selectedType = value);
@@ -481,11 +483,12 @@ class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
       },
     );
   }
+
   Widget _buildStatusDropdown(
-      BuildContext context,
-      bool isRTL,
-      ThemeData theme,
-      ) {
+    BuildContext context,
+    bool isRTL,
+    ThemeData theme,
+  ) {
     return DropdownButtonFormField<VendorStatus>(
       value: _selectedStatus,
       isExpanded: true, // Ensures the dropdown fills its container width
@@ -494,31 +497,33 @@ class _VendorDialogRefactoredState extends State<VendorDialogRefactored> {
         prefixIcon: const Icon(Icons.check_circle_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      items: VendorStatus.values.map((status) {
-        return DropdownMenuItem(
-          value: status,
-          child: Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: status.color,
-                  shape: BoxShape.circle,
-                ),
+      items:
+          VendorStatus.values.map((status) {
+            return DropdownMenuItem(
+              value: status,
+              child: Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: status.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    // ← Key fix: allows text to flexibly take remaining space
+                    child: Text(
+                      isRTL ? status.arabicName : status.englishName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1, // Ensures single line with clean truncation
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded( // ← Key fix: allows text to flexibly take remaining space
-                child: Text(
-                  isRTL ? status.arabicName : status.englishName,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1, // Ensures single line with clean truncation
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
       onChanged: (value) {
         if (value != null) {
           setState(() => _selectedStatus = value);

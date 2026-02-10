@@ -7,12 +7,12 @@ import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/features/projects/data/models/project.dart';
 import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog_refactored.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 // Import refactored widgets
 import 'package:expense_tracker/features/projects/presentation/widgets/details/project_header_card.dart';
@@ -110,7 +110,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
   Future<void> _editProject() async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => ProjectDialogRefactored(project: _currentProject),
+      builder: (context) => ProjectDialog(project: _currentProject),
     );
 
     if (result == true) {
@@ -120,7 +120,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final isDesktop = context.isDesktop;
@@ -158,13 +158,14 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: BlocBuilder<ExpenseBloc, ExpenseState>(
+                child: BlocBuilder<ExpenseCubit, ExpenseState>(
                   builder: (context, expenseState) {
-                    // Use expenses from report if available, otherwise get from ExpenseBloc
-                    final projectExpenses = _projectReport?.expenseObjects.isNotEmpty == true
-                        ? _projectReport!.expenseObjects
-                        : _getProjectExpenses(expenseState);
-                    
+                    // Use expenses from report if available, otherwise get from ExpenseCubit
+                    final projectExpenses =
+                        _projectReport?.expenseObjects.isNotEmpty == true
+                            ? _projectReport!.expenseObjects
+                            : _getProjectExpenses(expenseState);
+
                     // Use report data if available, fallback to calculated values
                     final totalExpenses =
                         _projectReport?.totalExpenses ??

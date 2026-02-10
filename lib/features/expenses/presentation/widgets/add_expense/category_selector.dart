@@ -1,7 +1,8 @@
 // Add Expense - Category Selector Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/constants/categories.dart';
-import 'package:expense_tracker/constants/category_constants.dart' show CategoryType;
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/core/constants/category_constants.dart'
+    show CategoryType;
 
 class CategorySelector extends StatelessWidget {
   final String selectedCategory;
@@ -46,31 +47,34 @@ class CategorySelector extends StatelessWidget {
     final validSelectedCategory =
         categories.contains(selectedCategory)
             ? selectedCategory
-            : Categories.getDefaultCategoryForType(isBusinessMode, CategoryType.expense);
+            : Categories.getDefaultCategoryForType(
+              isBusinessMode,
+              CategoryType.expense,
+            );
 
-        return DropdownButtonFormField<String>(
-          value: validSelectedCategory,
-          decoration: InputDecoration(
-            labelText: isRTL ? 'الفئة' : 'Category',
-            border: const OutlineInputBorder(),
-            prefixIcon: Icon(Categories.getIcon(validSelectedCategory)),
-          ),
-          items:
-              categories.map((category) {
-                return DropdownMenuItem(
-                  value: category,
-                  child: Row(
-                    children: [
-                      Icon(Categories.getIcon(category), size: 20),
-                      const SizedBox(width: 12),
-                      Text(_getCategoryLabel(category)),
-                    ],
-                  ),
-                );
-              }).toList(),
-          onChanged: (value) {
-            if (value != null) onChanged(value);
-          },
-        );
+    return DropdownButtonFormField<String>(
+      value: validSelectedCategory,
+      decoration: InputDecoration(
+        labelText: isRTL ? 'الفئة' : 'Category',
+        border: const OutlineInputBorder(),
+        prefixIcon: Icon(Categories.getIcon(validSelectedCategory)),
+      ),
+      items:
+          categories.map((category) {
+            return DropdownMenuItem(
+              value: category,
+              child: Row(
+                children: [
+                  Icon(Categories.getIcon(category), size: 20),
+                  const SizedBox(width: 12),
+                  Text(_getCategoryLabel(category)),
+                ],
+              ),
+            );
+          }).toList(),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    );
   }
 }

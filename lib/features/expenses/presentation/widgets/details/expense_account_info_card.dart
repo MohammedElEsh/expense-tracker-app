@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class ExpenseAccountInfoCard extends StatelessWidget {
   final Account? account;
@@ -101,7 +101,7 @@ class ExpenseAccountInfoCard extends StatelessWidget {
     required bool isRTL,
     Color? valueColor,
   }) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,

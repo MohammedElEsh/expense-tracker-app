@@ -4,16 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/services/permission_service.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/constants/categories.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_state.dart';
-import 'package:expense_tracker/features/statistics/presentation/widgets/enhanced_statistics_screen_refactored.dart';
+import 'package:expense_tracker/core/services/permission_service.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
+import 'package:expense_tracker/features/statistics/presentation/widgets/enhanced_statistics_screen.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -27,11 +28,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
-        return BlocBuilder<ExpenseBloc, ExpenseState>(
+        return BlocBuilder<ExpenseCubit, ExpenseState>(
           builder: (context, expenseState) {
-            return BlocBuilder<UserBloc, UserState>(
+            return BlocBuilder<UserCubit, UserState>(
               builder: (context, userState) {
                 final isRTL = settings.language == 'ar';
                 final currentUser = userState.currentUser;
@@ -57,7 +58,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     appBar: AppBar(
                       title: Text(
                         isRTL ? 'الإحصائيات' : 'Statistics',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: AppTypography.headlineSmall.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       backgroundColor: settings.primaryColor,
                       foregroundColor:
@@ -85,10 +88,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 colors:
                                     settings.isDarkMode
                                         ? [
-                                          const Color(0xFF388E3C),
+                                          AppColors.darkSecondary,
                                           const Color(0xFF2E7D32),
                                         ]
-                                        : [Colors.green, Colors.greenAccent],
+                                        : [
+                                          AppColors.success,
+                                          AppColors.secondary,
+                                        ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -97,7 +103,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: settings.successColor.withValues(
+                                  color: AppColors.success.withValues(
                                     alpha: 0.3,
                                   ),
                                   blurRadius: context.isDesktop ? 12 : 8,
@@ -116,36 +122,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                       : DateFormat(
                                         'MMMM yyyy',
                                       ).format(selectedMonth),
-                                  style: const TextStyle(
+                                  style: AppTypography.headlineSmall.copyWith(
                                     color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppSpacing.xs),
                                 Text(
                                   '${settings.currencySymbol}${totalMonth.toStringAsFixed(2)}',
-                                  style: const TextStyle(
+                                  style: AppTypography.displayLarge.copyWith(
                                     color: Colors.white,
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: AppSpacing.xxs),
                                 Text(
                                   isRTL
                                       ? 'إجمالي المصروفات الشهرية'
                                       : 'Total Monthly Expenses',
-                                  style: const TextStyle(
+                                  style: AppTypography.bodyMedium.copyWith(
                                     color: Colors.white70,
-                                    fontSize: 14,
                                   ),
                                 ),
                               ],
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.xl),
 
                           // Chart Section
                           if (categoryTotals.isNotEmpty) ...[
@@ -153,26 +154,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               isRTL
                                   ? 'توزيع المصروفات حسب الفئة'
                                   : 'Expenses by Category',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: AppTypography.headlineMedium,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
                             Container(
                               height: 250,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withValues(alpha: 0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: AppDecorations.card(context),
                               child: PieChart(
                                 PieChartData(
                                   sections: _buildPieChartSections(
@@ -185,42 +173,49 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
                           ],
 
                           // Category List
                           Text(
                             isRTL ? 'تفاصيل الفئات' : 'Category Details',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTypography.headlineMedium,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
 
                           if (categoryTotals.isEmpty)
                             Container(
-                              padding: const EdgeInsets.all(32),
+                              padding: const EdgeInsets.all(AppSpacing.xxl),
                               decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
+                                color:
+                                    settings.isDarkMode
+                                        ? AppColors.surfaceVariantDark
+                                        : AppColors.surfaceVariantLight,
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusMd,
+                                ),
                               ),
                               child: Center(
                                 child: Column(
                                   children: [
                                     Icon(
                                       Icons.pie_chart_outline,
-                                      size: 48,
-                                      color: Colors.grey[400],
+                                      size: AppSpacing.iconXxl,
+                                      color:
+                                          settings.isDarkMode
+                                              ? AppColors.textDisabledDark
+                                              : AppColors.textDisabledLight,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
                                     Text(
                                       isRTL
                                           ? 'لا توجد مصروفات لهذا الشهر'
                                           : 'No expenses for this month',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey[600],
+                                      style: AppTypography.bodyLarge.copyWith(
+                                        color:
+                                            settings.isDarkMode
+                                                ? AppColors.textSecondaryDark
+                                                : AppColors.textSecondaryLight,
                                       ),
                                     ),
                                   ],
@@ -232,37 +227,29 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               final percentage =
                                   (entry.value / totalMonth * 100);
                               return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withValues(alpha: 0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                                margin: const EdgeInsets.only(
+                                  bottom: AppSpacing.xs,
                                 ),
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                decoration: AppDecorations.card(context),
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: 12,
-                                      height: 12,
+                                      width: AppSpacing.sm,
+                                      height: AppSpacing.sm,
                                       decoration: BoxDecoration(
                                         color: _getCategoryColor(entry.key),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: AppSpacing.sm),
                                     Expanded(
                                       child: Text(
-                                        Categories.getDisplayName(entry.key, isRTL),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                                        Categories.getDisplayName(
+                                          entry.key,
+                                          isRTL,
                                         ),
+                                        style: AppTypography.titleMedium,
                                       ),
                                     ),
                                     Column(
@@ -271,17 +258,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                       children: [
                                         Text(
                                           '${settings.currencySymbol}${entry.value.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          style: AppTypography.titleMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                         Text(
                                           '${percentage.toStringAsFixed(1)}%',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
+                                          style: AppTypography.bodySmall
+                                              .copyWith(
+                                                color:
+                                                    settings.isDarkMode
+                                                        ? AppColors
+                                                            .textSecondaryDark
+                                                        : AppColors
+                                                            .textSecondaryLight,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -290,24 +282,35 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               );
                             }),
 
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
 
                           // Ad space placeholder
                           Container(
                             height: 100,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
+                              color:
+                                  settings.isDarkMode
+                                      ? AppColors.surfaceVariantDark
+                                      : AppColors.surfaceVariantLight,
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusSm,
+                              ),
+                              border: Border.all(
+                                color:
+                                    settings.isDarkMode
+                                        ? AppColors.borderDark
+                                        : AppColors.borderLight,
+                              ),
                             ),
                             child: Center(
                               child: Text(
                                 isRTL ? 'مساحة إعلانية' : 'Ad Space',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                                style: AppTypography.titleMedium.copyWith(
+                                  color:
+                                      settings.isDarkMode
+                                          ? AppColors.textSecondaryDark
+                                          : AppColors.textSecondaryLight,
                                 ),
                               ),
                             ),
@@ -329,15 +332,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     Map<String, double> categoryTotals,
     double total,
   ) {
-    final colors = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-    ];
+    final colors = AppColors.chartColorsLight;
 
     return categoryTotals.entries.toList().asMap().entries.map((entry) {
       final index = entry.key;
@@ -349,10 +344,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         value: data.value,
         title: '${percentage.toStringAsFixed(1)}%',
         radius: 60,
-        titleStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+        titleStyle: AppTypography.labelMedium.copyWith(
           color: Colors.white,
+          fontWeight: FontWeight.bold,
         ),
       );
     }).toList();
@@ -360,17 +354,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Color _getCategoryColor(String category) {
     final colors = {
-      'Food': Colors.blue,
-      'Transportation': Colors.red,
-      'Entertainment': Colors.green,
-      'Shopping': Colors.orange,
-      'Bills': Colors.purple,
-      'Healthcare': Colors.teal,
-      'Others': Colors.pink,
+      'Food': AppColors.chartColorsLight[0],
+      'Transportation': AppColors.chartColorsLight[3],
+      'Entertainment': AppColors.chartColorsLight[1],
+      'Shopping': AppColors.chartColorsLight[2],
+      'Bills': AppColors.chartColorsLight[4],
+      'Healthcare': AppColors.chartColorsLight[5],
+      'Others': AppColors.chartColorsLight[6],
     };
-    return colors[category] ?? Colors.grey;
+    return colors[category] ?? AppColors.textTertiaryLight;
   }
-
 
   Future<void> _selectMonth(BuildContext context) async {
     final DateTime? picked = await showDatePicker(

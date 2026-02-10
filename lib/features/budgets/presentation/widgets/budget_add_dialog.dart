@@ -1,8 +1,8 @@
 // Budget Add Dialog - نافذة إضافة ميزانية
 import 'package:flutter/material.dart';
 
-import 'package:expense_tracker/constants/categories.dart';
-import 'package:expense_tracker/constants/category_constants.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/core/constants/category_constants.dart';
 import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
 
 class BudgetAddDialog extends StatefulWidget {

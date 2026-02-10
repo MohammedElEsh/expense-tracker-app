@@ -8,7 +8,8 @@ import 'package:expense_tracker/features/settings/data/models/settings_model.dar
 class SettingsApiService {
   final ApiService _apiService;
 
-  SettingsApiService({required ApiService apiService}) : _apiService = apiService;
+  SettingsApiService({required ApiService apiService})
+    : _apiService = apiService;
 
   /// GET /api/settings
   /// Fetch current user settings from API
@@ -34,7 +35,9 @@ class SettingsApiService {
         }
 
         final settings = SettingsModel.fromMap(settingsMap);
-        debugPrint('✅ Settings loaded: ${settings.currency}, ${settings.language}, ${settings.theme}');
+        debugPrint(
+          '✅ Settings loaded: ${settings.currency}, ${settings.language}, ${settings.theme}',
+        );
         return settings;
       }
 
@@ -73,10 +76,7 @@ class SettingsApiService {
 
       debugPrint('📦 Request body: $body');
 
-      final response = await _apiService.put(
-        '/api/settings',
-        data: body,
-      );
+      final response = await _apiService.put('/api/settings', data: body);
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -148,6 +148,3 @@ class SettingsApiService {
     }
   }
 }
-
-
-

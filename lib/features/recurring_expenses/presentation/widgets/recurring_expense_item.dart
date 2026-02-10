@@ -2,13 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/constants/categories.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
+import 'package:expense_tracker/core/utils/theme_helper.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/pages/recurring_expense_details_screen.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:intl/intl.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class RecurringExpenseItem extends StatelessWidget {
   final RecurringExpense expense;
@@ -44,7 +45,9 @@ class RecurringExpenseItem extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     if (!expense.isActive) {
-      return isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+      return isDarkMode
+          ? AppColors.textTertiaryDark
+          : AppColors.textSecondaryLight;
     }
 
     final nextDue = expense.nextDue ?? expense.calculateNextDue();
@@ -52,9 +55,9 @@ class RecurringExpenseItem extends StatelessWidget {
     final difference = nextDue.difference(now).inDays;
 
     if (difference <= 0) {
-      return isDarkMode ? Colors.red.shade400 : Colors.red.shade700;
+      return isDarkMode ? AppColors.darkError : AppColors.error;
     } else if (difference <= 3) {
-      return isDarkMode ? Colors.orange.shade400 : Colors.orange.shade700;
+      return isDarkMode ? AppColors.darkWarning : AppColors.warning;
     } else {
       return Theme.of(context).primaryColor;
     }
@@ -71,23 +74,24 @@ class RecurringExpenseItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Opacity(
             opacity: expense.isActive ? 1.0 : 0.6,
             child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
+              contentPadding: const EdgeInsets.all(AppSpacing.md),
               onTap: () => _navigateToDetails(context),
 
               leading: Stack(
                 children: [
                   CircleAvatar(
-                    backgroundColor:
-                    _getStatusColor(context).withValues(alpha: 0.1),
+                    backgroundColor: _getStatusColor(
+                      context,
+                    ).withValues(alpha: 0.1),
                     child: Icon(
                       Categories.getIcon(expense.category),
                       color: _getStatusColor(context),
@@ -98,10 +102,13 @@ class RecurringExpenseItem extends StatelessWidget {
                     right: 0,
                     top: 0,
                     child: Container(
-                      width: 12,
-                      height: 12,
+                      width: AppSpacing.sm,
+                      height: AppSpacing.sm,
                       decoration: BoxDecoration(
-                        color: expense.isActive ? Colors.green : Colors.grey,
+                        color:
+                            expense.isActive
+                                ? AppColors.success
+                                : AppColors.badgeInactive,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: Theme.of(context).cardColor,
@@ -120,15 +127,18 @@ class RecurringExpenseItem extends StatelessWidget {
                       expense.notes.isNotEmpty
                           ? expense.notes
                           : (isRTL
-                          ? Categories.getArabicName(expense.category)
-                          : expense.category),
+                              ? Categories.getArabicName(expense.category)
+                              : expense.category),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: expense.isActive
-                            ? context.primaryTextColor
-                            : context.tertiaryTextColor,
+                        color:
+                            expense.isActive
+                                ? context.primaryTextColor
+                                : context.tertiaryTextColor,
                         decoration:
-                        expense.isActive ? null : TextDecoration.lineThrough,
+                            expense.isActive
+                                ? null
+                                : TextDecoration.lineThrough,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -137,12 +147,14 @@ class RecurringExpenseItem extends StatelessWidget {
                   if (!expense.isActive)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxxs,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.badgeInactive.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                       child: Text(
                         isRTL ? 'متوقف' : 'Inactive',
@@ -225,12 +237,14 @@ class RecurringExpenseItem extends StatelessWidget {
                   if (expense.isActive)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxs,
                       ),
                       decoration: BoxDecoration(
                         color: _getStatusColor(context).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -277,14 +291,14 @@ class RecurringExpenseItem extends StatelessWidget {
 
                           return Text(
                             '${expense.amount.toStringAsFixed(2)} ${settings.currencySymbol}',
-                            style: TextStyle(
+                            style: AppTypography.labelLarge.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: expense.isActive
-                                  ? (isDarkMode
-                                  ? Colors.blue.shade300
-                                  : Theme.of(context).primaryColor)
-                                  : context.tertiaryTextColor,
+                              color:
+                                  expense.isActive
+                                      ? (isDarkMode
+                                          ? AppColors.darkPrimary
+                                          : Theme.of(context).primaryColor)
+                                      : context.tertiaryTextColor,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -313,78 +327,82 @@ class RecurringExpenseItem extends StatelessWidget {
                             break;
                         }
                       },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'details',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info_outline),
-                              const SizedBox(width: 8),
-                              Text(isRTL ? 'عرض التفاصيل' : 'View Details'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit),
-                              const SizedBox(width: 8),
-                              Text(isRTL ? 'تعديل' : 'Edit'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'toggle',
-                          child: Row(
-                            children: [
-                              Icon(
-                                expense.isActive
-                                    ? Icons.pause_circle_outline
-                                    : Icons.play_circle_outline,
-                                color: expense.isActive
-                                    ? Colors.orange
-                                    : Colors.green,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                expense.isActive
-                                    ? (isRTL ? 'إيقاف' : 'Deactivate')
-                                    : (isRTL ? 'تفعيل' : 'Activate'),
-                                style: TextStyle(
-                                  color: expense.isActive
-                                      ? Colors.orange
-                                      : Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Builder(
-                            builder: (context) {
-                              final isDarkMode =
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark;
-                              final deleteColor = isDarkMode
-                                  ? Colors.red.shade400
-                                  : Colors.red.shade700;
-
-                              return Row(
+                      itemBuilder:
+                          (context) => [
+                            PopupMenuItem(
+                              value: 'details',
+                              child: Row(
                                 children: [
-                                  Icon(Icons.delete, color: deleteColor),
-                                  const SizedBox(width: 8),
+                                  const Icon(Icons.info_outline),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(isRTL ? 'عرض التفاصيل' : 'View Details'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.edit),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(isRTL ? 'تعديل' : 'Edit'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'toggle',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    expense.isActive
+                                        ? Icons.pause_circle_outline
+                                        : Icons.play_circle_outline,
+                                    color:
+                                        expense.isActive
+                                            ? AppColors.warning
+                                            : AppColors.success,
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
                                   Text(
-                                    isRTL ? 'حذف' : 'Delete',
-                                    style: TextStyle(color: deleteColor),
+                                    expense.isActive
+                                        ? (isRTL ? 'إيقاف' : 'Deactivate')
+                                        : (isRTL ? 'تفعيل' : 'Activate'),
+                                    style: TextStyle(
+                                      color:
+                                          expense.isActive
+                                              ? AppColors.warning
+                                              : AppColors.success,
+                                    ),
                                   ),
                                 ],
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Builder(
+                                builder: (context) {
+                                  final isDarkMode =
+                                      Theme.of(context).brightness ==
+                                      Brightness.dark;
+                                  final deleteColor =
+                                      isDarkMode
+                                          ? AppColors.darkError
+                                          : AppColors.error;
+
+                                  return Row(
+                                    children: [
+                                      Icon(Icons.delete, color: deleteColor),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      Text(
+                                        isRTL ? 'حذف' : 'Delete',
+                                        style: TextStyle(color: deleteColor),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                     ),
                   ],
                 ),

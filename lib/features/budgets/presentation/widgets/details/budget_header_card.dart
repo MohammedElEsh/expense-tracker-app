@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:expense_tracker/features/budgets/data/models/budget.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/features/budgets/utils/budget_helpers.dart';
 
 class BudgetHeaderCard extends StatelessWidget {

@@ -2,13 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/budgets/presentation/bloc/budget_bloc.dart';
-import 'package:expense_tracker/features/budgets/presentation/bloc/budget_event.dart';
-import 'package:expense_tracker/features/budgets/presentation/bloc/budget_state.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/budgets/presentation/cubit/budget_cubit.dart';
+import 'package:expense_tracker/features/budgets/presentation/cubit/budget_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/budgets/data/models/budget.dart';
 
 // Import refactored widgets
@@ -18,7 +18,7 @@ import 'package:expense_tracker/features/budgets/presentation/widgets/budget_cat
 import 'package:expense_tracker/features/budgets/presentation/widgets/budget_add_dialog.dart';
 import 'package:expense_tracker/features/budgets/presentation/pages/budget_details_screen.dart';
 import 'package:expense_tracker/features/budgets/utils/budget_calculations.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 
 class BudgetManagementScreen extends StatefulWidget {
   const BudgetManagementScreen({super.key});
@@ -38,14 +38,16 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
   }
 
   void _loadBudgetsForSelectedMonth() {
-    context.read<BudgetBloc>().add(
-      LoadBudgetsForMonth(selectedMonth.year, selectedMonth.month),
+    context.read<BudgetCubit>().loadBudgetsForMonth(
+      selectedMonth.year,
+      selectedMonth.month,
     );
   }
 
   Future<void> _refreshBudgets() async {
-    context.read<BudgetBloc>().add(
-      RefreshBudgets(selectedMonth.year, selectedMonth.month),
+    context.read<BudgetCubit>().refreshBudgets(
+      selectedMonth.year,
+      selectedMonth.month,
     );
     // Wait for the state to update
     await Future.delayed(const Duration(milliseconds: 500));
@@ -53,11 +55,11 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
-        return BlocBuilder<BudgetBloc, BudgetState>(
+        return BlocBuilder<BudgetCubit, BudgetState>(
           builder: (context, budgetState) {
-            return BlocBuilder<ExpenseBloc, ExpenseState>(
+            return BlocBuilder<ExpenseCubit, ExpenseState>(
               builder: (context, expenseState) {
                 final isRTL = settings.language == 'ar';
 
@@ -91,7 +93,9 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
                             ),
                           ),
 
-                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: AppSpacing.md),
+                          ),
 
                           // 3. Budget Categories List
                           _buildBudgetSliver(
@@ -123,9 +127,9 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
     return AppBar(
       title: Text(
         isRTL ? 'إدارة الميزانية' : 'Budget Management',
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: AppTypography.headlineSmall.copyWith(color: Colors.white),
       ),
-      backgroundColor: Colors.blue,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       foregroundColor: Colors.white,
       actions: [
         IconButton(
@@ -203,19 +207,28 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
   }
 
   Widget _buildEmptyState(bool isRTL) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.account_balance_wallet_outlined,
-            size: 64,
-            color: Colors.grey[400],
+            size: AppSpacing.iconXxl + 16,
+            color:
+                isDark
+                    ? AppColors.iconInactiveDark
+                    : AppColors.iconInactiveLight,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(
             isRTL ? 'لا توجد ميزانيات' : 'No Budgets',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+            style: AppTypography.headlineSmall.copyWith(
+              color:
+                  isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondaryLight,
+            ),
           ),
         ],
       ),
@@ -274,8 +287,10 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
   }
 
   void _deleteBudget(Budget budget) {
-    context.read<BudgetBloc>().add(
-      DeleteBudget(budget.category, budget.year, budget.month),
+    context.read<BudgetCubit>().deleteBudget(
+      budget.category,
+      budget.year,
+      budget.month,
     );
   }
 
@@ -301,7 +316,12 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
                 year: selectedMonth.year,
                 createdAt: DateTime.now(),
               );
-              context.read<BudgetBloc>().add(SaveBudget(budget));
+              context.read<BudgetCubit>().saveBudget(
+                category: budget.category,
+                limit: budget.limit,
+                month: budget.month,
+                year: budget.year,
+              );
               Navigator.of(dialogContext).pop();
             },
           ),

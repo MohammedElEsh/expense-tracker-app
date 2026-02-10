@@ -4,11 +4,11 @@ import 'dart:ui' as ui;
 
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 // Import Widgets
 import 'package:expense_tracker/features/accounts/presentation/widgets/details/account_header_card.dart';
@@ -62,7 +62,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final isDesktop = context.isDesktop;
@@ -88,7 +88,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen>
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: BlocBuilder<ExpenseBloc, ExpenseState>(
+                child: BlocBuilder<ExpenseCubit, ExpenseState>(
                   builder: (context, expenseState) {
                     final accountExpenses = _getAccountExpenses(expenseState);
                     final totalExpenses = _getTotalExpenses(accountExpenses);

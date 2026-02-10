@@ -1,10 +1,11 @@
 // Expense Details - Basic Details Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/core/utils/date_time_utils.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class ExpenseBasicDetailsCard extends StatelessWidget {
   final Expense expense;
@@ -75,7 +76,8 @@ class ExpenseBasicDetailsCard extends StatelessWidget {
               isRTL: isRTL,
             ),
           ],
-          if (expense.updatedAt != null && expense.updatedAt != expense.createdAt) ...[
+          if (expense.updatedAt != null &&
+              expense.updatedAt != expense.createdAt) ...[
             const Divider(height: 16),
             _buildDetailRow(
               context,
@@ -100,27 +102,23 @@ class ExpenseBasicDetailsCard extends StatelessWidget {
     required Widget child,
   }) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: AppSpacing.elevationMd,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: Theme.of(context).primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Icon(icon, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: AppSpacing.xs),
+                Text(title, style: AppTypography.headlineSmall),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             child,
           ],
         ),
@@ -136,41 +134,43 @@ class ExpenseBasicDetailsCard extends StatelessWidget {
     required bool isRTL,
     Color? valueColor,
   }) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               icon,
-              size: 20,
-              color: settings.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              size: AppSpacing.iconSm,
+              color:
+                  settings.isDarkMode
+                      ? AppColors.iconDark
+                      : AppColors.iconLight,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTypography.labelMedium.copyWith(
                       color:
                           settings.isDarkMode
-                              ? Colors.grey[300]
-                              : Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                              ? AppColors.textTertiaryDark
+                              : AppColors.textSecondaryLight,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     value,
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w600,
                       color:
                           valueColor ??
-                          (settings.isDarkMode ? Colors.white : Colors.black87),
+                          (settings.isDarkMode
+                              ? AppColors.textPrimaryDark
+                              : AppColors.textPrimaryLight),
                     ),
                   ),
                 ],

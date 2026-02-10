@@ -1,9 +1,8 @@
 // Settings - Theme Settings Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_event.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'modern_settings_card.dart';
 
 class ThemeSettingsCard extends StatelessWidget {
@@ -13,7 +12,7 @@ class ThemeSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsBloc>().state;
+    final settings = context.watch<SettingsCubit>().state;
 
     return ModernSettingsCard(
       title: isRTL ? 'المظهر' : 'Theme',
@@ -60,7 +59,7 @@ class ThemeSettingsCard extends StatelessWidget {
     return InkWell(
       onTap: () {
         // Toggle theme based on current state
-        context.read<SettingsBloc>().add(ToggleDarkMode(!settings.isDarkMode));
+        context.read<SettingsCubit>().toggleDarkMode(!settings.isDarkMode);
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

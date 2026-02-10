@@ -15,18 +15,15 @@ class CompanyResponse {
   final Company? company;
   final String? message;
 
-  CompanyResponse({
-    required this.success,
-    this.company,
-    this.message,
-  });
+  CompanyResponse({required this.success, this.company, this.message});
 
   factory CompanyResponse.fromJson(Map<String, dynamic> json) {
     return CompanyResponse(
       success: json['success'] as bool? ?? false,
-      company: json['company'] != null
-          ? Company.fromApiJson(json['company'] as Map<String, dynamic>)
-          : null,
+      company:
+          json['company'] != null
+              ? Company.fromApiJson(json['company'] as Map<String, dynamic>)
+              : null,
       message: json['message']?.toString(),
     );
   }
@@ -45,7 +42,7 @@ class CompanyApiService {
   static const Duration _cacheDuration = Duration(minutes: 5);
 
   CompanyApiService({required ApiService apiService})
-      : _apiService = apiService;
+    : _apiService = apiService;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -120,7 +117,8 @@ class CompanyApiService {
           return newCompany;
         } else {
           // Handle error message from API
-          final errorMessage = companyResponse.message ?? 'Failed to create company';
+          final errorMessage =
+              companyResponse.message ?? 'Failed to create company';
           throw ValidationException(errorMessage);
         }
       }
@@ -246,7 +244,8 @@ class CompanyApiService {
           debugPrint('✅ Company updated successfully');
           return updatedCompany;
         } else {
-          final errorMessage = companyResponse.message ?? 'Failed to update company';
+          final errorMessage =
+              companyResponse.message ?? 'Failed to update company';
           throw ValidationException(errorMessage);
         }
       }
@@ -307,4 +306,3 @@ class CompanyApiService {
     }
   }
 }
-

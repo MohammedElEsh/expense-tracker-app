@@ -54,12 +54,14 @@ class Company {
       // Parse dates
       DateTime createdAt = DateTime.now();
       if (json['createdAt'] != null) {
-        createdAt = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+        createdAt =
+            DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
       }
 
       DateTime updatedAt = DateTime.now();
       if (json['updatedAt'] != null) {
-        updatedAt = DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now();
+        updatedAt =
+            DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now();
       }
 
       return Company(
@@ -72,7 +74,8 @@ class Company {
         fiscalYearStart: json['fiscalYearStart']?.toString() ?? '01-01',
         isActive: json['isActive'] as bool? ?? true,
         employeeCount: (json['employeeCount'] ?? 0) as int,
-        currentEmployeeCount: (json['currentEmployeeCount'] ?? json['employeeCount'] ?? 0) as int,
+        currentEmployeeCount:
+            (json['currentEmployeeCount'] ?? json['employeeCount'] ?? 0) as int,
         ownerEmail: json['ownerEmail']?.toString() ?? '',
         ownerId: ownerInfo,
         createdAt: createdAt,
@@ -86,10 +89,7 @@ class Company {
 
   /// Convert to API JSON for POST/PUT requests
   Map<String, dynamic> toApiJson() {
-    final json = <String, dynamic>{
-      'name': name,
-      'currency': currency,
-    };
+    final json = <String, dynamic>{'name': name, 'currency': currency};
 
     if (taxNumber != null && taxNumber!.isNotEmpty) {
       json['taxNumber'] = taxNumber;
@@ -186,4 +186,3 @@ class OwnerInfo {
     };
   }
 }
-

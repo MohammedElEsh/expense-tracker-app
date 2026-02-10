@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
+import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class VendorExpensesSection extends StatelessWidget {
   final List<Expense> expenses;
@@ -132,7 +132,10 @@ class VendorExpensesSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat('dd MMM yyyy', isRTL ? 'ar' : 'en').format(expense.date),
+                    DateFormat(
+                      'dd MMM yyyy',
+                      isRTL ? 'ar' : 'en',
+                    ).format(expense.date),
                     style: TextStyle(
                       fontSize: isDesktop ? 14 : 12,
                       color: settings.secondaryTextColor,

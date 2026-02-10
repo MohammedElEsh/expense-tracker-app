@@ -1,10 +1,10 @@
 // Accounts - Summary Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
 class AccountsSummaryCard extends StatelessWidget {
   final AccountState accountState;
@@ -58,7 +58,7 @@ class AccountsSummaryCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: isDesktop ? 6 : 4),
-                      BlocBuilder<SettingsBloc, SettingsState>(
+                      BlocBuilder<SettingsCubit, SettingsState>(
                         builder: (context, settings) {
                           final isDarkMode =
                               Theme.of(context).brightness == Brightness.dark;

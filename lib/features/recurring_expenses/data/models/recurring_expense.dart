@@ -95,7 +95,9 @@ class RecurringExpense {
 
     // Parse recurrence type from API string
     final recurrenceTypeStr = json['recurrenceType']?.toString() ?? 'monthly';
-    final recurrenceType = RecurrenceTypeExtension.fromString(recurrenceTypeStr);
+    final recurrenceType = RecurrenceTypeExtension.fromString(
+      recurrenceTypeStr,
+    );
 
     // Parse nextDue date
     DateTime? nextDue;
@@ -253,7 +255,8 @@ class RecurringExpense {
 
         // Handle months with fewer days
         if (targetDay > 28) {
-          final lastDayOfMonth = DateTime(nextDate.year, nextDate.month + 1, 0).day;
+          final lastDayOfMonth =
+              DateTime(nextDate.year, nextDate.month + 1, 0).day;
           if (targetDay > lastDayOfMonth) {
             nextDate = DateTime(nextDate.year, nextDate.month, lastDayOfMonth);
           }
@@ -418,7 +421,16 @@ class RecurringExpense {
   }
 
   String _getWeekdayName(int weekday) {
-    const weekdays = ['', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+    const weekdays = [
+      '',
+      'الاثنين',
+      'الثلاثاء',
+      'الأربعاء',
+      'الخميس',
+      'الجمعة',
+      'السبت',
+      'الأحد',
+    ];
     return weekdays[weekday.clamp(1, 7)];
   }
 
@@ -439,12 +451,7 @@ class RecurringExpense {
 }
 
 /// Recurrence type enum
-enum RecurrenceType {
-  daily,
-  weekly,
-  monthly,
-  yearly,
-}
+enum RecurrenceType { daily, weekly, monthly, yearly }
 
 extension RecurrenceTypeExtension on RecurrenceType {
   String get displayName {

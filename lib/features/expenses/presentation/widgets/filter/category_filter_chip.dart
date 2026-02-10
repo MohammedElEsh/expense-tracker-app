@@ -1,6 +1,6 @@
 // Expense Filter - Category Filter Chip Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/constants/categories.dart';
+import 'package:expense_tracker/core/constants/categories.dart';
 
 class CategoryFilterChip extends StatelessWidget {
   final String? selectedCategory;
@@ -25,7 +25,7 @@ class CategoryFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     // Reorder categories to ensure "أخرى" is always last
     final reorderedCategories = Categories.reorderCategories(categories);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

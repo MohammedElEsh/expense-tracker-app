@@ -1,9 +1,8 @@
-// ✅ Personal Signup Screen - Refactored with BLoC
+// ✅ Personal Signup Screen - Refactored with Cubit
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_bloc.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_event.dart';
-import 'package:expense_tracker/features/auth/presentation/bloc/signup_state.dart';
+import 'package:expense_tracker/features/auth/presentation/cubit/signup_cubit.dart';
+import 'package:expense_tracker/features/auth/presentation/cubit/signup_state.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/name_field.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/email_field.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/password_field.dart';
@@ -39,12 +38,10 @@ class _PersonalSignupScreenState extends State<PersonalSignupScreen> {
   void _handleSignup(BuildContext context, bool isRTL) {
     if (!_formKey.currentState!.validate()) return;
 
-    context.read<SignupBloc>().add(
-      SignupPersonalRequested(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      ),
+    context.read<SignupCubit>().signupPersonal(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
     );
   }
 
@@ -53,8 +50,8 @@ class _PersonalSignupScreenState extends State<PersonalSignupScreen> {
     final isRTL = Directionality.of(context) == TextDirection.rtl;
 
     return BlocProvider(
-      create: (context) => SignupBloc(),
-      child: BlocConsumer<SignupBloc, SignupState>(
+      create: (context) => SignupCubit(),
+      child: BlocConsumer<SignupCubit, SignupState>(
         listener: (context, state) {
           if (state.isSuccess) {
             Navigator.of(context).pushAndRemoveUntil(

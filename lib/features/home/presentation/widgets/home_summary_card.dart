@@ -1,7 +1,7 @@
 // Home Feature - Presentation Layer - Home Summary Card Widget
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class HomeSummaryCard extends StatelessWidget {
   final bool isRTL;
@@ -43,18 +43,30 @@ class HomeSummaryCard extends StatelessWidget {
         position: slideAnimation,
         child: Container(
           width: double.infinity,
-          margin: EdgeInsets.all(isDesktop ? 32 : (isTablet ? 24 : 16)),
-          padding: EdgeInsets.all(isDesktop ? 40 : (isTablet ? 32 : 20)),
+          margin: EdgeInsets.all(
+            isDesktop
+                ? AppSpacing.xxl
+                : (isTablet ? AppSpacing.xl : AppSpacing.md),
+          ),
+          padding: EdgeInsets.all(
+            isDesktop
+                ? AppSpacing.xxxl
+                : (isTablet ? AppSpacing.xxl : AppSpacing.lg),
+          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors:
                   isDarkMode
-                      ? [const Color(0xFF1976D2), const Color(0xFF1565C0)]
-                      : [Colors.blue, Colors.blueAccent],
+                      ? [AppColors.primaryDark, const Color(0xFF1565C0)]
+                      : [AppColors.primary, AppColors.primaryDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(context.borderRadius),
+            borderRadius: BorderRadius.circular(
+              isDesktop
+                  ? AppSpacing.radiusLg
+                  : (isTablet ? AppSpacing.radiusMd : AppSpacing.radiusMd),
+            ),
             boxShadow: [
               BoxShadow(
                 color: primaryColor.withValues(alpha: 0.3),
@@ -68,25 +80,35 @@ class HomeSummaryCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    viewModeTitle,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isDesktop ? 24 : (isTablet ? 20 : 16),
-                      fontWeight: FontWeight.w500,
+                  Flexible(
+                    child: Text(
+                      viewModeTitle,
+                      style: (isDesktop
+                              ? AppTypography.headlineLarge
+                              : (isTablet
+                                  ? AppTypography.headlineMedium
+                                  : AppTypography.titleMedium))
+                          .copyWith(color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   GestureDetector(
                     onTap: onViewModeTap,
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 16 : (isTablet ? 12 : 8),
-                        vertical: isDesktop ? 10 : (isTablet ? 8 : 4),
+                        horizontal:
+                            isDesktop
+                                ? AppSpacing.md
+                                : (isTablet ? AppSpacing.sm : AppSpacing.xs),
+                        vertical:
+                            isDesktop
+                                ? AppSpacing.sm
+                                : (isTablet ? AppSpacing.xs : AppSpacing.xxs),
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(
-                          context.borderRadius,
+                          AppSpacing.radiusSm,
                         ),
                       ),
                       child: Row(
@@ -95,15 +117,24 @@ class HomeSummaryCard extends StatelessWidget {
                           Icon(
                             Icons.arrow_drop_down,
                             color: Colors.white,
-                            size: isDesktop ? 26 : (isTablet ? 24 : 20),
+                            size:
+                                isDesktop
+                                    ? AppSpacing.iconLg
+                                    : (isTablet
+                                        ? AppSpacing.iconMd
+                                        : AppSpacing.iconSm),
                           ),
                           Text(
                             viewModeLabel,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isDesktop ? 18 : (isTablet ? 16 : 14),
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: (isDesktop
+                                    ? AppTypography.titleLarge
+                                    : (isTablet
+                                        ? AppTypography.titleMedium
+                                        : AppTypography.bodyMedium))
+                                .copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
                         ],
                       ),
@@ -111,7 +142,12 @@ class HomeSummaryCard extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: isDesktop ? 28 : (isTablet ? 24 : 20)),
+              SizedBox(
+                height:
+                    isDesktop
+                        ? AppSpacing.xxl
+                        : (isTablet ? AppSpacing.xl : AppSpacing.lg),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -122,48 +158,72 @@ class HomeSummaryCard extends StatelessWidget {
                       children: [
                         Text(
                           isRTL ? 'الإجمالي' : 'Total',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: isDesktop ? 18 : (isTablet ? 16 : 14),
-                          ),
+                          style: (isDesktop
+                                  ? AppTypography.titleLarge
+                                  : (isTablet
+                                      ? AppTypography.titleMedium
+                                      : AppTypography.bodyMedium))
+                              .copyWith(
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
                         ),
-                        SizedBox(height: isDesktop ? 10 : (isTablet ? 8 : 4)),
+                        SizedBox(
+                          height:
+                              isDesktop
+                                  ? AppSpacing.sm
+                                  : (isTablet ? AppSpacing.xs : AppSpacing.xxs),
+                        ),
                         Text(
                           '$currencySymbol ${NumberFormat('#,##0.00').format(totalAmount)}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isDesktop ? 36 : (isTablet ? 32 : 28),
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: (isDesktop
+                                  ? AppTypography.displayLarge
+                                  : (isTablet
+                                      ? AppTypography.displayMedium
+                                      : AppTypography.amountLarge))
+                              .copyWith(color: Colors.white),
                         ),
                       ],
                     ),
                   ),
                   Container(
                     padding: EdgeInsets.all(
-                      isDesktop ? 20 : (isTablet ? 16 : 12),
+                      isDesktop
+                          ? AppSpacing.lg
+                          : (isTablet ? AppSpacing.md : AppSpacing.sm),
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(context.borderRadius),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                     child: Column(
                       children: [
                         Text(
                           transactionCount.toString(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isDesktop ? 32 : (isTablet ? 28 : 24),
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: (isDesktop
+                                  ? AppTypography.displayLarge
+                                  : (isTablet
+                                      ? AppTypography.displayMedium
+                                      : AppTypography.displaySmall))
+                              .copyWith(color: Colors.white),
                         ),
-                        SizedBox(height: isDesktop ? 6 : (isTablet ? 4 : 2)),
+                        SizedBox(
+                          height:
+                              isDesktop
+                                  ? AppSpacing.xs
+                                  : (isTablet
+                                      ? AppSpacing.xxs
+                                      : AppSpacing.xxxs),
+                        ),
                         Text(
                           isRTL ? 'مصروف' : 'Expense',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: isDesktop ? 16 : (isTablet ? 14 : 12),
-                          ),
+                          style: (isDesktop
+                                  ? AppTypography.titleMedium
+                                  : (isTablet
+                                      ? AppTypography.bodyMedium
+                                      : AppTypography.bodySmall))
+                              .copyWith(
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
                         ),
                       ],
                     ),

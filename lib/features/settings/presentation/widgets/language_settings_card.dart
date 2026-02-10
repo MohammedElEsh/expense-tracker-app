@@ -1,8 +1,7 @@
 // Settings - Language Settings Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_event.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'modern_settings_card.dart';
 
 class LanguageSettingsCard extends StatelessWidget {
@@ -12,7 +11,7 @@ class LanguageSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsBloc>().state;
+    final settings = context.watch<SettingsCubit>().state;
 
     return ModernSettingsCard(
       title: isRTL ? 'اللغة' : 'Language',
@@ -33,7 +32,7 @@ class LanguageSettingsCard extends StatelessWidget {
         ],
         onChanged: (value) {
           if (value != null && value != settings.language) {
-            context.read<SettingsBloc>().add(ChangeLanguage(value));
+            context.read<SettingsCubit>().changeLanguage(value);
           }
         },
       ),

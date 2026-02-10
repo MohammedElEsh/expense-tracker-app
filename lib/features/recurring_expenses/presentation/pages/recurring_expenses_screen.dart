@@ -2,15 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/bloc/recurring_expense_bloc.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/bloc/recurring_expense_event.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/bloc/recurring_expense_state.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_dialog_refactored.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_state.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_dialog.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_item.dart';
-import 'package:expense_tracker/widgets/empty_state_widget.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/core/widgets/empty_state_widget.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/accounts_screen.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
 import 'dart:ui' as ui;
@@ -28,14 +27,14 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
   void initState() {
     super.initState();
     // Load recurring expenses using BLoC
-    context.read<RecurringExpenseBloc>().add(const LoadRecurringExpenses());
+    context.read<RecurringExpenseCubit>().loadRecurringExpenses();
   }
 
   Future<void> _addRecurringExpense() async {
     final isRTL = Localizations.localeOf(context).languageCode == 'ar';
 
     // Check if accounts exist
-    final accountState = context.read<AccountBloc>().state;
+    final accountState = context.read<AccountCubit>().state;
 
     if (accountState.accounts.isEmpty) {
       // Show warning dialog
@@ -93,7 +92,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
     // Open add dialog
     final dialogResult = await showDialog<bool>(
       context: context,
-      builder: (context) => const RecurringExpenseDialogRefactored(),
+      builder: (context) => const RecurringExpenseDialog(),
     );
 
     if (dialogResult == true && mounted) {
@@ -116,9 +115,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
 
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (context) =>
-              RecurringExpenseDialogRefactored(recurringExpense: expense),
+      builder: (context) => RecurringExpenseDialog(recurringExpense: expense),
     );
 
     if (result == true && mounted) {
@@ -167,9 +164,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
       serviceLocator.recurringExpenseNotificationService.cancelReminder(
         expense.id,
       );
-      context.read<RecurringExpenseBloc>().add(
-        DeleteRecurringExpense(expense.id),
-      );
+      context.read<RecurringExpenseCubit>().deleteRecurringExpense(expense.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -187,8 +182,9 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
         expense.id,
       );
     }
-    context.read<RecurringExpenseBloc>().add(
-      ToggleRecurringExpense(expense.id, !expense.isActive),
+    context.read<RecurringExpenseCubit>().toggleRecurringExpense(
+      expense.id,
+      !expense.isActive,
     );
   }
 
@@ -215,7 +211,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  BlocBuilder<SettingsBloc, SettingsState>(
+                  BlocBuilder<SettingsCubit, SettingsState>(
                     builder: (context, settings) {
                       final isRTL = settings.language == 'ar';
                       return Text(
@@ -231,7 +227,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
                     },
                   ),
                   const SizedBox(height: 4),
-                  BlocBuilder<SettingsBloc, SettingsState>(
+                  BlocBuilder<SettingsCubit, SettingsState>(
                     builder: (context, settings) {
                       final isDarkMode =
                           Theme.of(context).brightness == Brightness.dark;
@@ -248,7 +244,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
                       );
                     },
                   ),
-                  BlocBuilder<SettingsBloc, SettingsState>(
+                  BlocBuilder<SettingsCubit, SettingsState>(
                     builder: (context, settings) {
                       final isRTL = settings.language == 'ar';
                       return Row(
@@ -316,7 +312,7 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
             ),
           ],
         ),
-        body: BlocConsumer<RecurringExpenseBloc, RecurringExpenseState>(
+        body: BlocConsumer<RecurringExpenseCubit, RecurringExpenseState>(
           listener: (context, state) {
             // Show error snackbar if there's an error
             if (state.error != null) {
@@ -347,8 +343,8 @@ class _RecurringExpensesScreenState extends State<RecurringExpensesScreen> {
             return RefreshIndicator(
               onRefresh: () async {
                 // Refresh recurring expenses - use RefreshRecurringExpenses to always fetch
-                final bloc = context.read<RecurringExpenseBloc>();
-                bloc.add(const RefreshRecurringExpenses());
+                final bloc = context.read<RecurringExpenseCubit>();
+                bloc.refreshRecurringExpenses();
 
                 // Wait for the bloc to finish loading
                 await bloc.stream.firstWhere((state) => !state.isLoading);

@@ -28,7 +28,8 @@ class DatePickerField extends StatelessWidget {
     if (picked != null) {
       // Set time to start of day (00:00:00) - user can only select date, not time
       final dateOnly = DateTime(picked.year, picked.month, picked.day);
-      if (dateOnly != DateTime(selectedDate.year, selectedDate.month, selectedDate.day)) {
+      if (dateOnly !=
+          DateTime(selectedDate.year, selectedDate.month, selectedDate.day)) {
         onDateChanged(dateOnly);
       }
     }

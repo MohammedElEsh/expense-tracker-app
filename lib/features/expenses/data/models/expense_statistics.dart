@@ -24,13 +24,12 @@ class ExpenseStatistics {
     return ExpenseStatistics(
       totalAmount: (json['totalAmount'] ?? json['total'] ?? 0.0).toDouble(),
       totalCount: json['totalCount'] ?? json['count'] ?? 0,
-      averageAmount: (json['averageAmount'] ?? json['average'] ?? 0.0).toDouble(),
+      averageAmount:
+          (json['averageAmount'] ?? json['average'] ?? 0.0).toDouble(),
       categoryTotals: Map<String, double>.from(
         json['categoryTotals'] ?? json['categories'] ?? {},
       ),
-      categoryCounts: Map<String, int>.from(
-        json['categoryCounts'] ?? {},
-      ),
+      categoryCounts: Map<String, int>.from(json['categoryCounts'] ?? {}),
     );
   }
 
@@ -138,20 +137,23 @@ class AccountSummary {
   factory AccountSummary.fromJson(Map<String, dynamic> json) {
     // Handle nested account object
     final accountData = json['account'] ?? json['accountId'] ?? {};
-    final accountId = accountData is String
-        ? accountData
-        : (accountData['_id'] ?? accountData['id'] ?? '');
+    final accountId =
+        accountData is String
+            ? accountData
+            : (accountData['_id'] ?? accountData['id'] ?? '');
 
     return AccountSummary(
       accountId: accountId,
-      accountName: accountData is Map
-          ? (accountData['name'] ?? '')
-          : (json['accountName'] ?? ''),
+      accountName:
+          accountData is Map
+              ? (accountData['name'] ?? '')
+              : (json['accountName'] ?? ''),
       totalAmount: (json['totalAmount'] ?? json['total'] ?? 0.0).toDouble(),
       totalCount: json['totalCount'] ?? json['count'] ?? 0,
-      currency: accountData is Map
-          ? (accountData['currency'] ?? 'EGP')
-          : (json['currency'] ?? 'EGP'),
+      currency:
+          accountData is Map
+              ? (accountData['currency'] ?? 'EGP')
+              : (json['currency'] ?? 'EGP'),
     );
   }
 
@@ -217,6 +219,3 @@ class TimelineEntry {
     };
   }
 }
-
-
-

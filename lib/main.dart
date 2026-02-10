@@ -1,5 +1,5 @@
-import 'package:expense_tracker/expense_tracker_app.dart';
-import 'package:expense_tracker/services/database_service.dart';
+import 'package:expense_tracker/app/app.dart';
+import 'package:expense_tracker/core/services/database_service.dart';
 import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'package:expense_tracker/features/onboarding/data/datasources/onboarding_service.dart';
 import 'package:expense_tracker/features/users/data/datasources/user_service.dart';
@@ -36,7 +36,7 @@ void main() async {
   await SettingsService.init();
   // BudgetService is now API-based and initialized via ServiceLocator
   await OnboardingService.init();
-  // Recurring expenses are now API-based and handled via RecurringExpenseBloc
+  // Recurring expenses are now API-based and handled via RecurringExpenseCubit
 
   // إنشاء مستخدم افتراضي
   try {

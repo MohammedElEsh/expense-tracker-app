@@ -7,10 +7,10 @@ import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/features/companies/data/models/company.dart';
 import 'package:expense_tracker/features/companies/data/datasources/company_api_service.dart';
 import 'package:expense_tracker/features/companies/presentation/widgets/company_dialog.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
-import 'package:expense_tracker/utils/theme_helper.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/theme_helper.dart';
 import 'package:intl/intl.dart';
 
 class CompanyDetailsScreen extends StatefulWidget {
@@ -49,7 +49,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -71,7 +71,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
     if (result == true) {
       await _refreshCompany();
       if (mounted) {
-        final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -85,29 +85,30 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   }
 
   Future<void> _deleteCompany() async {
-    final isRTL = context.read<SettingsBloc>().state.language == 'ar';
+    final isRTL = context.read<SettingsCubit>().state.language == 'ar';
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isRTL ? 'تأكيد الحذف' : 'Confirm Delete'),
-        content: Text(
-          isRTL
-              ? 'هل أنت متأكد من حذف الشركة "${_currentCompany.name}"؟'
-              : 'Are you sure you want to delete company "${_currentCompany.name}"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(isRTL ? 'تأكيد الحذف' : 'Confirm Delete'),
+            content: Text(
+              isRTL
+                  ? 'هل أنت متأكد من حذف الشركة "${_currentCompany.name}"؟'
+                  : 'Are you sure you want to delete company "${_currentCompany.name}"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: Text(isRTL ? 'حذف' : 'Delete'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(isRTL ? 'حذف' : 'Delete'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -140,7 +141,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
         final isDesktop = context.isDesktop;
@@ -192,28 +193,29 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                 ),
               ],
             ),
-            body: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    padding: EdgeInsets.all(isDesktop ? 24 : 16),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: ResponsiveUtils.getMaxContentWidth(context),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeaderCard(settings, isRTL),
-                          const SizedBox(height: 16),
-                          _buildInfoCard(settings, isRTL),
-                          const SizedBox(height: 16),
-                          _buildOwnerCard(settings, isRTL),
-                          const SizedBox(height: 16),
-                          _buildStatsCard(settings, isRTL),
-                        ],
+            body:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                      padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: ResponsiveUtils.getMaxContentWidth(context),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeaderCard(settings, isRTL),
+                            const SizedBox(height: 16),
+                            _buildInfoCard(settings, isRTL),
+                            const SizedBox(height: 16),
+                            _buildOwnerCard(settings, isRTL),
+                            const SizedBox(height: 16),
+                            _buildStatsCard(settings, isRTL),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
           ),
         );
       },
@@ -223,9 +225,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   Widget _buildHeaderCard(SettingsState settings, bool isRTL) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -317,9 +317,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   Widget _buildInfoCard(SettingsState settings, bool isRTL) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -388,9 +386,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -461,9 +457,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   Widget _buildStatsCard(SettingsState settings, bool isRTL) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -495,7 +489,9 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                     context,
                     Icons.calendar_today,
                     isRTL ? 'تاريخ الإنشاء' : 'Created',
-                    DateFormat('MMM dd, yyyy').format(_currentCompany.createdAt),
+                    DateFormat(
+                      'MMM dd, yyyy',
+                    ).format(_currentCompany.createdAt),
                     settings,
                   ),
                 ),
@@ -569,10 +565,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: context.tertiaryTextColor,
-            ),
+            style: TextStyle(fontSize: 12, color: context.tertiaryTextColor),
           ),
           const SizedBox(height: 4),
           Text(
@@ -588,4 +581,3 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
     );
   }
 }
-

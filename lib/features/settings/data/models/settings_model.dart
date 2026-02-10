@@ -52,33 +52,42 @@ class SettingsModel {
       currency: map['currency']?.toString() ?? 'SAR',
       language: map['language']?.toString() ?? 'en',
       theme: map['theme']?.toString() ?? 'light',
-      notifications: map['notifications'] == true || map['notifications'] == 'true',
+      notifications:
+          map['notifications'] == true || map['notifications'] == 'true',
       companyName: map['companyName']?.toString(),
       companyLogo: map['companyLogo']?.toString(),
       invoicePrefix: map['invoicePrefix']?.toString(),
       dateFormat: map['dateFormat']?.toString(),
       timeFormat: map['timeFormat']?.toString(),
       fiscalYearStart: map['fiscalYearStart']?.toString(),
-      budgetWarningThreshold: map['budgetWarningThreshold'] is int
-          ? map['budgetWarningThreshold'] as int
-          : map['budgetWarningThreshold'] != null
+      budgetWarningThreshold:
+          map['budgetWarningThreshold'] is int
+              ? map['budgetWarningThreshold'] as int
+              : map['budgetWarningThreshold'] != null
               ? int.tryParse(map['budgetWarningThreshold'].toString())
               : null,
-      overBudgetAlert: map['overBudgetAlert'] == true || map['overBudgetAlert'] == 'true',
-      lowBalanceAlert: map['lowBalanceAlert'] == true || map['lowBalanceAlert'] == 'true',
-      lowBalanceThreshold: map['lowBalanceThreshold'] is int
-          ? map['lowBalanceThreshold'] as int
-          : map['lowBalanceThreshold'] != null
+      overBudgetAlert:
+          map['overBudgetAlert'] == true || map['overBudgetAlert'] == 'true',
+      lowBalanceAlert:
+          map['lowBalanceAlert'] == true || map['lowBalanceAlert'] == 'true',
+      lowBalanceThreshold:
+          map['lowBalanceThreshold'] is int
+              ? map['lowBalanceThreshold'] as int
+              : map['lowBalanceThreshold'] != null
               ? int.tryParse(map['lowBalanceThreshold'].toString())
               : null,
-      autoProcessRecurring: map['autoProcessRecurring'] == true || map['autoProcessRecurring'] == 'true',
+      autoProcessRecurring:
+          map['autoProcessRecurring'] == true ||
+          map['autoProcessRecurring'] == 'true',
       defaultReportPeriod: map['defaultReportPeriod']?.toString(),
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'].toString())
-          : null,
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.tryParse(map['updatedAt'].toString())
-          : null,
+      createdAt:
+          map['createdAt'] != null
+              ? DateTime.tryParse(map['createdAt'].toString())
+              : null,
+      updatedAt:
+          map['updatedAt'] != null
+              ? DateTime.tryParse(map['updatedAt'].toString())
+              : null,
     );
   }
 
@@ -97,12 +106,20 @@ class SettingsModel {
     if (dateFormat != null) map['dateFormat'] = dateFormat;
     if (timeFormat != null) map['timeFormat'] = timeFormat;
     if (fiscalYearStart != null) map['fiscalYearStart'] = fiscalYearStart;
-    if (budgetWarningThreshold != null) map['budgetWarningThreshold'] = budgetWarningThreshold;
+    if (budgetWarningThreshold != null) {
+      map['budgetWarningThreshold'] = budgetWarningThreshold;
+    }
     if (overBudgetAlert != null) map['overBudgetAlert'] = overBudgetAlert;
     if (lowBalanceAlert != null) map['lowBalanceAlert'] = lowBalanceAlert;
-    if (lowBalanceThreshold != null) map['lowBalanceThreshold'] = lowBalanceThreshold;
-    if (autoProcessRecurring != null) map['autoProcessRecurring'] = autoProcessRecurring;
-    if (defaultReportPeriod != null) map['defaultReportPeriod'] = defaultReportPeriod;
+    if (lowBalanceThreshold != null) {
+      map['lowBalanceThreshold'] = lowBalanceThreshold;
+    }
+    if (autoProcessRecurring != null) {
+      map['autoProcessRecurring'] = autoProcessRecurring;
+    }
+    if (defaultReportPeriod != null) {
+      map['defaultReportPeriod'] = defaultReportPeriod;
+    }
 
     return map;
   }
@@ -139,7 +156,8 @@ class SettingsModel {
       dateFormat: dateFormat ?? this.dateFormat,
       timeFormat: timeFormat ?? this.timeFormat,
       fiscalYearStart: fiscalYearStart ?? this.fiscalYearStart,
-      budgetWarningThreshold: budgetWarningThreshold ?? this.budgetWarningThreshold,
+      budgetWarningThreshold:
+          budgetWarningThreshold ?? this.budgetWarningThreshold,
       overBudgetAlert: overBudgetAlert ?? this.overBudgetAlert,
       lowBalanceAlert: lowBalanceAlert ?? this.lowBalanceAlert,
       lowBalanceThreshold: lowBalanceThreshold ?? this.lowBalanceThreshold,
@@ -158,4 +176,3 @@ class SettingsModel {
     return 'SettingsModel(id: $id, currency: $currency, language: $language, theme: $theme, notifications: $notifications)';
   }
 }
-

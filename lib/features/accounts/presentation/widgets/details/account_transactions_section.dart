@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
 
 class AccountTransactionsSection extends StatelessWidget {
@@ -129,7 +129,10 @@ class AccountTransactionsSection extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          DateFormat('dd MMM yyyy, HH:mm', isRTL ? 'ar' : 'en').format(expense.date),
+          DateFormat(
+            'dd MMM yyyy, HH:mm',
+            isRTL ? 'ar' : 'en',
+          ).format(expense.date),
           style: TextStyle(
             fontSize: isDesktop ? 13 : 12,
             color: settings.secondaryTextColor,

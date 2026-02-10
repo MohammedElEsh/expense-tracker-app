@@ -4,13 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/projects/data/models/project.dart';
 import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_card.dart';
-import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog_refactored.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:expense_tracker/features/projects/presentation/pages/project_details_screen.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/list/projects_search_filter.dart';
 
@@ -25,7 +26,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  
+
   // API Service
   ProjectApiService get _projectService => serviceLocator.projectService;
 
@@ -112,7 +113,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
   Future<void> _showProjectDialog({Project? project}) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => ProjectDialogRefactored(project: project),
+      builder: (context) => ProjectDialog(project: project),
     );
 
     if (result == true) {
@@ -126,7 +127,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
                   ? 'تم إضافة المشروع بنجاح'
                   : 'تم تحديث المشروع بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -148,7 +149,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
                 child: const Text('حذف'),
               ),
             ],
@@ -184,7 +185,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsBloc, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 
@@ -194,9 +195,12 @@ class _ProjectsScreenState extends State<ProjectsScreen>
             appBar: AppBar(
               title: Text(
                 isRTL ? 'إدارة المشاريع' : 'Project Management',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: AppTypography.headlineMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               actions: [
                 IconButton(
@@ -254,7 +258,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
             floatingActionButton: FloatingActionButton(
               heroTag: 'project_add_fab',
               onPressed: () => _showProjectDialog(),
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
@@ -290,11 +294,17 @@ class _ProjectsScreenState extends State<ProjectsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            const Icon(
+              Icons.folder_open,
+              size: 64,
+              color: AppColors.textDisabledLight,
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               isRTL ? 'لا توجد مشاريع' : 'No projects',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -302,7 +312,7 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: projects.length,
       itemBuilder: (context, index) {
         final project = projects[index];
@@ -322,17 +332,19 @@ class _ProjectsScreenState extends State<ProjectsScreen>
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
           Text(
             isRTL ? 'إحصائيات المشاريع' : 'Project Statistics',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: AppTypography.displaySmall.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             '${_statistics!['totalProjects'] ?? 0} ${isRTL ? "مشروع" : "projects"}',
-            style: const TextStyle(fontSize: 18),
+            style: AppTypography.headlineSmall,
           ),
         ],
       ),

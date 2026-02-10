@@ -132,9 +132,6 @@ extension UserRoleExtension on UserRole {
     }
   }
 
-
-
-
   /// اللون كـ Color
   Color get color {
     return Color(colorValue);

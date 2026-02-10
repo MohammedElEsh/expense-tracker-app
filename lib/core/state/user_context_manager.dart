@@ -4,8 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_event.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/users/data/models/user.dart';
 
 /// Central manager for handling user context changes
@@ -103,11 +102,11 @@ class UserContextManager {
     try {
       debugPrint('🔄 Resetting all BLoC states...');
 
-      // Reset AccountBloc
-      _tryResetBloc<AccountBloc>(
+      // Reset AccountCubit
+      _tryResetBloc<AccountCubit>(
         context,
-        (bloc) => bloc.add(const InitializeAccounts()),
-        'AccountBloc',
+        (cubit) => cubit.initializeAccounts(),
+        'AccountCubit',
       );
 
       // Note: Other BLoCs will be reset when Load* events are called

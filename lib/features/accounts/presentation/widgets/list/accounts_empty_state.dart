@@ -1,7 +1,7 @@
 // Accounts - Empty State Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/widgets/empty_state_widget.dart';
-import 'package:expense_tracker/features/accounts/presentation/widgets/account_dialog_refactored.dart';
+import 'package:expense_tracker/core/widgets/empty_state_widget.dart';
+import 'package:expense_tracker/features/accounts/presentation/widgets/account_dialog.dart';
 
 class AccountsEmptyState extends StatelessWidget {
   const AccountsEmptyState({super.key});
@@ -21,7 +21,7 @@ class AccountsEmptyState extends StatelessWidget {
       onAction: () {
         showDialog(
           context: context,
-          builder: (context) => const AccountDialogRefactored(),
+          builder: (context) => const AccountDialog(),
         );
       },
     );

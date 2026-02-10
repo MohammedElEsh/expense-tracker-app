@@ -2,11 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_state.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/widgets/animated_page_route.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:expense_tracker/features/accounts/presentation/pages/account_details_screen.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class AccountListItem extends StatelessWidget {
   final Account account;
@@ -25,7 +26,7 @@ class AccountListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -33,45 +34,51 @@ class AccountListItem extends StatelessWidget {
             AnimatedPageRoute(child: AccountDetailsScreen(account: account)),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
                       color: account.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
-                    child: Icon(account.icon, color: account.color, size: 24),
+                    child: Icon(
+                      account.icon,
+                      color: account.color,
+                      size: AppSpacing.iconMd,
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           account.name,
-                          style: TextStyle(
+                          style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: account.isActive ? null : Colors.grey,
+                            color:
+                                account.isActive
+                                    ? null
+                                    : AppColors.textTertiaryLight,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        BlocBuilder<SettingsBloc, SettingsState>(
+                        const SizedBox(height: AppSpacing.xxxs),
+                        BlocBuilder<SettingsCubit, SettingsState>(
                           builder: (context, settings) {
                             return Text(
                               account.type.displayName,
-                              style: TextStyle(
+                              style: AppTypography.bodyMedium.copyWith(
                                 color:
                                     settings.isDarkMode
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
+                                        ? AppColors.textSecondaryDark
+                                        : AppColors.textSecondaryLight,
                               ),
                             );
                           },
@@ -82,23 +89,21 @@ class AccountListItem extends StatelessWidget {
                   _buildPopupMenu(context),
                 ],
               ),
-              const SizedBox(height: 12),
-              BlocBuilder<SettingsBloc, SettingsState>(
+              const SizedBox(height: AppSpacing.sm),
+              BlocBuilder<SettingsCubit, SettingsState>(
                 builder: (context, settings) {
                   final isDarkMode = settings.isDarkMode;
                   return Text(
                     '${account.balance.toStringAsFixed(2)} ${settings.currencySymbol}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                    style: AppTypography.amountMedium.copyWith(
                       color:
                           account.balance >= 0
                               ? (isDarkMode
-                                  ? Colors.green.shade400
-                                  : Colors.green.shade700)
+                                  ? AppColors.darkSuccess
+                                  : AppColors.success)
                               : (isDarkMode
-                                  ? Colors.red.shade400
-                                  : Colors.red.shade700),
+                                  ? AppColors.darkError
+                                  : AppColors.error),
                     ),
                   );
                 },
@@ -131,7 +136,7 @@ class AccountListItem extends StatelessWidget {
               child: Row(
                 children: [
                   const Icon(Icons.edit),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(isRTL ? 'تعديل' : 'Edit'),
                 ],
               ),
@@ -143,11 +148,11 @@ class AccountListItem extends StatelessWidget {
                   final isDarkMode =
                       Theme.of(context).brightness == Brightness.dark;
                   final deleteColor =
-                      isDarkMode ? Colors.red.shade400 : Colors.red.shade700;
+                      isDarkMode ? AppColors.darkError : AppColors.error;
                   return Row(
                     children: [
                       Icon(Icons.delete, color: deleteColor),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(
                         isRTL ? 'حذف' : 'Delete',
                         style: TextStyle(color: deleteColor),

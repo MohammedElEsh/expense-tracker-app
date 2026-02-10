@@ -18,9 +18,7 @@ class VendorService {
   // Cache for vendors
   List<Vendor>? _cachedVendors;
 
-  VendorService({
-    required ApiService apiService,
-  }) : _apiService = apiService;
+  VendorService({required ApiService apiService}) : _apiService = apiService;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -154,9 +152,10 @@ class VendorService {
         final List<dynamic> data =
             responseData['vendors'] ?? responseData['data'] ?? [];
 
-        final vendors = data
-            .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
-            .toList();
+        final vendors =
+            data
+                .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
+                .toList();
 
         // Cache the vendors
         _cachedVendors = vendors;
@@ -193,10 +192,7 @@ class VendorService {
       debugPrint('🔍 getFilteredVendors - Page: $page, Limit: $limit');
 
       // Build query parameters
-      final Map<String, dynamic> queryParams = {
-        'page': page,
-        'limit': limit,
-      };
+      final Map<String, dynamic> queryParams = {'page': page, 'limit': limit};
 
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
@@ -224,21 +220,21 @@ class VendorService {
         final responseData = response.data as Map<String, dynamic>;
         final List<dynamic> vendorsData =
             responseData['vendors'] ?? responseData['data'] ?? [];
-        final paginationData = responseData['pagination'] as Map<String, dynamic>?;
+        final paginationData =
+            responseData['pagination'] as Map<String, dynamic>?;
 
-        final vendors = vendorsData
-            .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
-            .toList();
+        final vendors =
+            vendorsData
+                .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
+                .toList();
 
         debugPrint('✅ Loaded ${vendors.length} filtered vendors from API');
 
         return {
           'vendors': vendors,
-          'pagination': paginationData ?? {
-            'current': page,
-            'pages': 1,
-            'total': vendors.length,
-          },
+          'pagination':
+              paginationData ??
+              {'current': page, 'pages': 1, 'total': vendors.length},
         };
       }
 
@@ -279,9 +275,10 @@ class VendorService {
         final List<dynamic> data =
             responseData['vendors'] ?? responseData['data'] ?? [];
 
-        final vendors = data
-            .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
-            .toList();
+        final vendors =
+            data
+                .map((json) => Vendor.fromApiJson(json as Map<String, dynamic>))
+                .toList();
 
         debugPrint('✅ Loaded ${vendors.length} top vendors from API');
         return vendors;
@@ -368,13 +365,13 @@ class VendorService {
         final responseData = response.data as Map<String, dynamic>;
         final vendorData = responseData['vendor'] ?? responseData;
 
-        final updatedVendor =
-            Vendor.fromApiJson(vendorData as Map<String, dynamic>);
+        final updatedVendor = Vendor.fromApiJson(
+          vendorData as Map<String, dynamic>,
+        );
 
         // Update cache
         if (_cachedVendors != null) {
-          final index =
-              _cachedVendors!.indexWhere((v) => v.id == vendor.id);
+          final index = _cachedVendors!.indexWhere((v) => v.id == vendor.id);
           if (index != -1) {
             _cachedVendors![index] = updatedVendor;
           }
@@ -458,7 +455,8 @@ class VendorService {
 
     return vendors.where((vendor) {
       return vendor.name.toLowerCase().contains(lowerSearchTerm) ||
-          (vendor.companyName?.toLowerCase().contains(lowerSearchTerm) ?? false) ||
+          (vendor.companyName?.toLowerCase().contains(lowerSearchTerm) ??
+              false) ||
           (vendor.email?.toLowerCase().contains(lowerSearchTerm) ?? false) ||
           (vendor.phone?.contains(searchTerm) ?? false) ||
           (vendor.notes?.toLowerCase().contains(lowerSearchTerm) ?? false);
@@ -501,10 +499,3 @@ class VendorService {
     }
   }
 }
-
-
-
-
-
-
-

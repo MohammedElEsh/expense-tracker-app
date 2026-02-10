@@ -1,9 +1,8 @@
 // Settings - Currency Settings Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_event.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'modern_settings_card.dart';
 
@@ -14,9 +13,9 @@ class CurrencySettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsBloc>().state;
+    final settings = context.watch<SettingsCubit>().state;
 
-    return BlocListener<SettingsBloc, SettingsState>(
+    return BlocListener<SettingsCubit, SettingsState>(
       listenWhen: (previous, current) {
         // Listen for successful currency update
         return previous.currency != current.currency &&
@@ -48,31 +47,34 @@ class CurrencySettingsCard extends StatelessWidget {
               horizontal: 16,
               vertical: 12,
             ),
-            suffixIcon: settings.isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : null,
+            suffixIcon:
+                settings.isLoading
+                    ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                    : null,
           ),
-          items: SettingsService.availableCurrencies.map((currencyCode) {
-            final symbol = SettingsService.getCurrencySymbol(currencyCode);
-            return DropdownMenuItem(
-              value: currencyCode,
-              child: Text('$currencyCode ($symbol)'),
-            );
-          }).toList(),
-          onChanged: settings.isLoading
-              ? null
-              : (value) {
-                  if (value != null && value != settings.currency) {
-                    context.read<SettingsBloc>().add(ChangeCurrency(value));
-                  }
-                },
+          items:
+              SettingsService.availableCurrencies.map((currencyCode) {
+                final symbol = SettingsService.getCurrencySymbol(currencyCode);
+                return DropdownMenuItem(
+                  value: currencyCode,
+                  child: Text('$currencyCode ($symbol)'),
+                );
+              }).toList(),
+          onChanged:
+              settings.isLoading
+                  ? null
+                  : (value) {
+                    if (value != null && value != settings.currency) {
+                      context.read<SettingsCubit>().changeCurrency(value);
+                    }
+                  },
         ),
       ),
     );

@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
 import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class RecurringExpenseDetailsCard extends StatelessWidget {
   final RecurringExpense recurringExpense;

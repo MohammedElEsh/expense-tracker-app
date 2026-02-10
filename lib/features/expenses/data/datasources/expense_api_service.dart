@@ -82,14 +82,16 @@ class ExpenseApiService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        debugPrint('📦 ExpenseApiService - Raw API response data type: ${data.runtimeType}');
+        debugPrint(
+          '📦 ExpenseApiService - Raw API response data type: ${data.runtimeType}',
+        );
         debugPrint(
           '📦 ExpenseApiService - Response keys: ${data is Map ? data.keys.toList() : 'N/A'}',
         );
 
         final List<dynamic> expensesList =
             data['expenses'] ?? data['data'] ?? [];
-        
+
         debugPrint(
           '📦 ExpenseApiService - Raw expenses list length: ${expensesList.length}',
         );
@@ -120,18 +122,16 @@ class ExpenseApiService {
           }
         }
 
-        debugPrint('✅ ExpenseApiService - Successfully parsed ${expenses.length}/${expensesList.length} expenses');
         debugPrint(
-          '   Role-based filtering handled by backend via auth token',
+          '✅ ExpenseApiService - Successfully parsed ${expenses.length}/${expensesList.length} expenses',
         );
+        debugPrint('   Role-based filtering handled by backend via auth token');
         return expenses;
       }
 
       // Handle specific error codes
       if (response.statusCode == 403) {
-        throw ForbiddenException(
-          'You do not have permission to view expenses',
-        );
+        throw ForbiddenException('You do not have permission to view expenses');
       }
 
       throw ServerException(
@@ -254,7 +254,9 @@ class ExpenseApiService {
       if (accountId != null) requestBody['accountId'] = accountId;
       if (amount != null) requestBody['amount'] = amount;
       if (category != null) requestBody['category'] = category;
-      if (customCategory != null) requestBody['customCategory'] = customCategory;
+      if (customCategory != null) {
+        requestBody['customCategory'] = customCategory;
+      }
       if (date != null) {
         requestBody['date'] = date.toIso8601String().split('T')[0];
       }
@@ -359,7 +361,7 @@ class ExpenseApiService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         final expenseJson = data['expense'] ?? data['data'] ?? data;
-        
+
         if (expenseJson == null) {
           throw ServerException(
             'Invalid response format from server',
@@ -375,14 +377,14 @@ class ExpenseApiService {
         debugPrint('   Amount: ${expense.amount}');
         debugPrint('   Category: ${expense.category}');
         debugPrint('   Vendor: ${expense.vendorName ?? 'N/A'}');
-        
+
         return expense;
       }
 
       // Handle specific error status codes
       final statusCode = response.statusCode;
       String errorMessage = 'Failed to scan receipt';
-      
+
       if (statusCode == 400) {
         errorMessage = 'Invalid image file or missing required fields';
       } else if (statusCode == 401) {
@@ -395,14 +397,11 @@ class ExpenseApiService {
         errorMessage = 'Server error. Please try again later.';
       }
 
-      throw ServerException(
-        errorMessage,
-        statusCode: statusCode,
-      );
+      throw ServerException(errorMessage, statusCode: statusCode);
     } catch (e) {
       debugPrint('❌ Error scanning receipt: $e');
-      if (e is ServerException || 
-          e is NetworkException || 
+      if (e is ServerException ||
+          e is NetworkException ||
           e is ValidationException ||
           e is UnauthorizedException ||
           e is ForbiddenException) {

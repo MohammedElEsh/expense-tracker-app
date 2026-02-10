@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_bloc.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_state.dart';
-import 'package:expense_tracker/features/accounts/presentation/bloc/account_event.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_bloc.dart';
-import 'package:expense_tracker/features/expenses/presentation/bloc/expense_state.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
+import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/accounts/presentation/widgets/account_dialog_refactored.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/accounts/presentation/widgets/account_dialog.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
 // Import Widgets
 import 'package:expense_tracker/features/accounts/presentation/widgets/list/accounts_summary_card.dart';
@@ -31,7 +31,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<AccountBloc>().add(const LoadAccounts());
+    context.read<AccountCubit>().loadAccounts();
   }
 
   @override
@@ -46,8 +46,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
-              onPressed:
-                  () => context.read<AccountBloc>().add(const LoadAccounts()),
+              onPressed: () => context.read<AccountCubit>().loadAccounts(),
             ),
             PopupMenuButton<String>(
               onSelected: (value) {
@@ -66,7 +65,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       child: Row(
                         children: [
                           const Icon(Icons.add),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           Text(isRTL ? 'إضافة حساب' : 'Add Account'),
                         ],
                       ),
@@ -80,7 +79,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                 ? Icons.visibility_off
                                 : Icons.visibility,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           Text(
                             _showInactiveAccounts
                                 ? (isRTL ? 'إخفاء المعطلة' : 'Hide Inactive')
@@ -93,14 +92,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
             ),
           ],
         ),
-        body: BlocListener<ExpenseBloc, ExpenseState>(
+        body: BlocListener<ExpenseCubit, ExpenseState>(
           listenWhen:
               (previous, current) =>
                   previous.allExpenses.length != current.allExpenses.length,
           listener:
               (context, expenseState) =>
-                  context.read<AccountBloc>().add(const LoadAccounts()),
-          child: BlocBuilder<AccountBloc, AccountState>(
+                  context.read<AccountCubit>().loadAccounts(),
+          child: BlocBuilder<AccountCubit, AccountState>(
             builder: (context, accountState) {
               if (accountState.isLoading) {
                 return const Center(child: CircularProgressIndicator());
@@ -119,8 +118,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
               return RefreshIndicator(
                 onRefresh:
-                    () async =>
-                        context.read<AccountBloc>().add(const LoadAccounts()),
+                    () async => context.read<AccountCubit>().loadAccounts(),
                 child: Column(
                   children: [
                     AccountsSummaryCard(
@@ -130,7 +128,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                     Expanded(
                       child: ListView.builder(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isDesktop ? 24 : 16,
+                          horizontal: isDesktop ? AppSpacing.xl : AppSpacing.md,
                         ),
                         itemCount: accounts.length,
                         itemBuilder: (context, index) {
@@ -160,14 +158,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Future<void> _showAddAccountDialog() async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => const AccountDialogRefactored(),
+      builder: (context) => const AccountDialog(),
     );
 
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم إضافة الحساب بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
           duration: Duration(seconds: 2),
         ),
       );
@@ -181,14 +179,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
       case 'edit':
         final result = await showDialog<bool>(
           context: context,
-          builder: (context) => AccountDialogRefactored(account: account),
+          builder: (context) => AccountDialog(account: account),
         );
 
         if (result == true && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم تحديث الحساب بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
               duration: Duration(seconds: 2),
             ),
           );
@@ -213,7 +211,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                    ),
                     child: Text(isRTL ? 'حذف' : 'Delete'),
                   ),
                 ],
@@ -221,11 +221,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
         );
 
         if (confirm == true && mounted) {
-          context.read<AccountBloc>().add(DeleteAccount(account.id));
+          context.read<AccountCubit>().deleteAccount(account.id);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(isRTL ? 'تم حذف الحساب' : 'Account deleted'),
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.warning,
               duration: const Duration(seconds: 2),
             ),
           );

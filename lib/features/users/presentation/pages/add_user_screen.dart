@@ -70,22 +70,21 @@ class _AddUserScreenState extends State<AddUserScreen> {
         if (e is ValidationException) {
           errorMessage = e.message;
         } else if (e is NetworkException) {
-          errorMessage = isRTL
-              ? 'خطأ في الاتصال بالشبكة'
-              : 'Network error. Please check your connection.';
+          errorMessage =
+              isRTL
+                  ? 'خطأ في الاتصال بالشبكة'
+                  : 'Network error. Please check your connection.';
         } else if (e is ServerException) {
           errorMessage = e.message;
         } else {
-          errorMessage = isRTL
-              ? 'فشل إضافة المستخدم'
-              : 'Failed to add user: ${e.toString()}';
+          errorMessage =
+              isRTL
+                  ? 'فشل إضافة المستخدم'
+                  : 'Failed to add user: ${e.toString()}';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -149,9 +148,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                 controller: _emailController,
                 decoration: InputDecoration(
                   labelText: isRTL ? 'البريد الإلكتروني' : 'Email',
-                  hintText: isRTL
-                      ? 'user@example.com'
-                      : 'user@example.com',
+                  hintText: isRTL ? 'user@example.com' : 'user@example.com',
                   prefixIcon: const Icon(Icons.email),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -165,8 +162,9 @@ class _AddUserScreenState extends State<AddUserScreen> {
                         ? 'البريد الإلكتروني مطلوب'
                         : 'Email is required';
                   }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                      .hasMatch(value.trim())) {
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value.trim())) {
                     return isRTL
                         ? 'البريد الإلكتروني غير صحيح'
                         : 'Invalid email format';
@@ -182,13 +180,13 @@ class _AddUserScreenState extends State<AddUserScreen> {
                 controller: _passwordController,
                 decoration: InputDecoration(
                   labelText: isRTL ? 'كلمة المرور' : 'Password',
-                  hintText: isRTL
-                      ? 'أدخل كلمة المرور'
-                      : 'Enter password',
+                  hintText: isRTL ? 'أدخل كلمة المرور' : 'Enter password',
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -213,8 +211,9 @@ class _AddUserScreenState extends State<AddUserScreen> {
                         ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
                         : 'Password must be at least 8 characters';
                   }
-                  if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)')
-                      .hasMatch(value)) {
+                  if (!RegExp(
+                    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)',
+                  ).hasMatch(value)) {
                     return isRTL
                         ? 'كلمة المرور يجب أن تحتوي على حرف كبير وصغير ورقم'
                         : 'Password must contain uppercase, lowercase, and number';
@@ -229,12 +228,9 @@ class _AddUserScreenState extends State<AddUserScreen> {
               TextFormField(
                 controller: _confirmPasswordController,
                 decoration: InputDecoration(
-                  labelText: isRTL
-                      ? 'تأكيد كلمة المرور'
-                      : 'Confirm Password',
-                  hintText: isRTL
-                      ? 'أعد إدخال كلمة المرور'
-                      : 'Re-enter password',
+                  labelText: isRTL ? 'تأكيد كلمة المرور' : 'Confirm Password',
+                  hintText:
+                      isRTL ? 'أعد إدخال كلمة المرور' : 'Re-enter password',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -283,42 +279,40 @@ class _AddUserScreenState extends State<AddUserScreen> {
               // Role Options (employee, accountant, auditor - owner not available)
               ...UserRole.values
                   .where((role) => role != UserRole.owner)
-                  .map((role) => RadioListTile<UserRole>(
-                        title: Text(role.getDisplayName(isRTL)),
-                        subtitle: Text(
-                          role.getDescription(isRTL),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        value: role,
-                        groupValue: _selectedRole,
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedRole = value;
-                            });
-                          }
-                        },
-                        secondary: Icon(
-                          role.icon,
-                          color: role.color,
-                        ),
-                      )),
+                  .map(
+                    (role) => RadioListTile<UserRole>(
+                      title: Text(role.getDisplayName(isRTL)),
+                      subtitle: Text(
+                        role.getDescription(isRTL),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      value: role,
+                      groupValue: _selectedRole,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedRole = value;
+                          });
+                        }
+                      },
+                      secondary: Icon(role.icon, color: role.color),
+                    ),
+                  ),
 
               const SizedBox(height: 48),
 
               // Submit Button
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _handleSubmit,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.person_add),
-                label: Text(
-                  isRTL ? 'إضافة المستخدم' : 'Add User',
-                ),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.person_add),
+                label: Text(isRTL ? 'إضافة المستخدم' : 'Add User'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,

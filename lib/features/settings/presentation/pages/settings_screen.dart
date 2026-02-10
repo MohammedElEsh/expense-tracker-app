@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_bloc.dart';
-import 'package:expense_tracker/features/settings/presentation/bloc/settings_state.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_bloc.dart';
-import 'package:expense_tracker/features/users/presentation/bloc/user_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
 import 'package:expense_tracker/features/settings/presentation/widgets/language_settings_card.dart';
 import 'package:expense_tracker/features/settings/presentation/widgets/theme_settings_card.dart';
 import 'package:expense_tracker/features/settings/presentation/widgets/currency_settings_card.dart';
@@ -14,14 +14,15 @@ import 'package:expense_tracker/features/settings/presentation/widgets/app_mode_
 import 'package:expense_tracker/features/settings/presentation/widgets/management_features_card.dart';
 import 'package:expense_tracker/features/settings/presentation/widgets/data_management_card.dart';
 import 'package:expense_tracker/features/settings/presentation/widgets/about_section_card.dart';
-import 'package:expense_tracker/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/core/theme/app_theme.dart';
 
-class SettingsScreenRefactored extends StatelessWidget {
-  const SettingsScreenRefactored({super.key});
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SettingsBloc, SettingsState>(
+    return BlocListener<SettingsCubit, SettingsState>(
       listenWhen: (previous, current) {
         // Listen for error changes or successful operations
         final errorChanged = previous.error != current.error;
@@ -37,7 +38,7 @@ class SettingsScreenRefactored extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.error!),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               duration: const Duration(seconds: 4),
               action: SnackBarAction(
                 label: isRTL ? 'إغلاق' : 'Dismiss',
@@ -51,9 +52,9 @@ class SettingsScreenRefactored extends StatelessWidget {
         }
         // Success messages are handled in individual widgets (e.g., DataManagementCard)
       },
-      child: BlocBuilder<SettingsBloc, SettingsState>(
+      child: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, settings) {
-          return BlocBuilder<UserBloc, UserState>(
+          return BlocBuilder<UserCubit, UserState>(
             builder: (context, userState) {
               final isRTL = settings.language == 'ar';
               final currentUser = userState.currentUser;
@@ -71,10 +72,10 @@ class SettingsScreenRefactored extends StatelessWidget {
                     elevation: 0,
                     title: Text(
                       isRTL ? 'الإعدادات' : 'Settings',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isDesktop ? 24 : 20,
-                      ),
+                      style: (isDesktop
+                              ? AppTypography.displaySmall
+                              : AppTypography.headlineMedium)
+                          .copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                   body:
@@ -88,12 +89,11 @@ class SettingsScreenRefactored extends StatelessWidget {
                                     settings.primaryColor,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.md),
                                 Text(
                                   isRTL ? 'جاري التحميل...' : 'Loading...',
-                                  style: TextStyle(
+                                  style: AppTypography.bodyLarge.copyWith(
                                     color: settings.primaryTextColor,
-                                    fontSize: 16,
                                   ),
                                 ),
                               ],
@@ -111,7 +111,9 @@ class SettingsScreenRefactored extends StatelessWidget {
                               ),
                             ),
                             child: SingleChildScrollView(
-                              padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                              padding: EdgeInsets.all(
+                                isDesktop ? AppSpacing.xxl : AppSpacing.md,
+                              ),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   maxWidth: isDesktop ? 800 : double.infinity,
@@ -128,19 +130,19 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       Icons.settings,
                                       settings,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     // Language
                                     LanguageSettingsCard(isRTL: isRTL),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     // Theme
                                     ThemeSettingsCard(isRTL: isRTL),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     // Currency
                                     CurrencySettingsCard(isRTL: isRTL),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     // App Mode
                                     AppModeSettingsCard(
@@ -148,7 +150,7 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       isRTL: isRTL,
                                     ),
 
-                                    const SizedBox(height: 32),
+                                    const SizedBox(height: AppSpacing.xxl),
 
                                     // Management Features Section
                                     _buildSectionHeader(
@@ -158,7 +160,7 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       Icons.admin_panel_settings,
                                       settings,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     ManagementFeaturesCard(
                                       settings: settings,
@@ -166,7 +168,7 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       isRTL: isRTL,
                                     ),
 
-                                    const SizedBox(height: 32),
+                                    const SizedBox(height: AppSpacing.xxl),
 
                                     // Data Management Section
                                     _buildSectionHeader(
@@ -176,14 +178,14 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       Icons.storage,
                                       settings,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     DataManagementCard(
                                       settings: settings,
                                       isRTL: isRTL,
                                     ),
 
-                                    const SizedBox(height: 32),
+                                    const SizedBox(height: AppSpacing.xxl),
 
                                     // About Section
                                     _buildSectionHeader(
@@ -191,14 +193,14 @@ class SettingsScreenRefactored extends StatelessWidget {
                                       Icons.info_outline,
                                       settings,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
 
                                     AboutSectionCard(
                                       settings: settings,
                                       isRTL: isRTL,
                                     ),
 
-                                    const SizedBox(height: 32),
+                                    const SizedBox(height: AppSpacing.xxl),
                                   ],
                                 ),
                               ),
@@ -220,12 +222,11 @@ class SettingsScreenRefactored extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: settings.primaryColor),
-        const SizedBox(width: 8),
+        Icon(icon, size: AppSpacing.iconSm, color: settings.primaryColor),
+        const SizedBox(width: AppSpacing.xs),
         Text(
           title,
-          style: TextStyle(
-            fontSize: 18,
+          style: AppTypography.headlineSmall.copyWith(
             fontWeight: FontWeight.bold,
             color: settings.primaryTextColor,
           ),
