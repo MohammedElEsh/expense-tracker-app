@@ -26,6 +26,8 @@ final class RecurringExpenseLoaded extends RecurringExpenseState {
   final RecurrenceType? selectedFrequency;
   /// Shown in snackbar after e.g. failed add/delete rollback
   final String? lastError;
+  /// FIX: When true, data is preserved while loading new data (no flicker).
+  final bool isRefreshing;
 
   const RecurringExpenseLoaded({
     required this.allRecurringExpenses,
@@ -35,6 +37,7 @@ final class RecurringExpenseLoaded extends RecurringExpenseState {
     this.selectedStatus,
     this.selectedFrequency,
     this.lastError,
+    this.isRefreshing = false,
   });
 
   int get totalActiveRecurringExpenses =>
@@ -47,6 +50,29 @@ final class RecurringExpenseLoaded extends RecurringExpenseState {
       selectedStatus != null ||
       selectedFrequency != null;
 
+  RecurringExpenseLoaded copyWith({
+    List<RecurringExpenseEntity>? allRecurringExpenses,
+    List<RecurringExpenseEntity>? filteredRecurringExpenses,
+    double? monthlyTotal,
+    String? selectedCategory,
+    bool? selectedStatus,
+    RecurrenceType? selectedFrequency,
+    String? lastError,
+    bool? isRefreshing,
+  }) {
+    return RecurringExpenseLoaded(
+      allRecurringExpenses: allRecurringExpenses ?? this.allRecurringExpenses,
+      filteredRecurringExpenses:
+          filteredRecurringExpenses ?? this.filteredRecurringExpenses,
+      monthlyTotal: monthlyTotal ?? this.monthlyTotal,
+      selectedCategory: selectedCategory ?? this.selectedCategory,
+      selectedStatus: selectedStatus ?? this.selectedStatus,
+      selectedFrequency: selectedFrequency ?? this.selectedFrequency,
+      lastError: lastError ?? this.lastError,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+    );
+  }
+
   @override
   List<Object?> get props => [
         allRecurringExpenses,
@@ -56,6 +82,7 @@ final class RecurringExpenseLoaded extends RecurringExpenseState {
         selectedStatus,
         selectedFrequency,
         lastError,
+        isRefreshing,
       ];
 }
 
@@ -69,7 +96,10 @@ final class RecurringExpenseError extends RecurringExpenseState {
 }
 
 extension RecurringExpenseStateX on RecurringExpenseState {
-  bool get isLoading => this is RecurringExpenseLoading;
+  /// FIX: RecurringExpenseLoading clears data; RecurringExpenseLoaded+isRefreshing preserves it.
+  bool get isLoading =>
+      this is RecurringExpenseLoading ||
+      (this is RecurringExpenseLoaded && (this as RecurringExpenseLoaded).isRefreshing);
   bool get hasLoaded => this is RecurringExpenseLoaded;
   List<RecurringExpenseEntity> get allRecurringExpenses =>
       this is RecurringExpenseLoaded

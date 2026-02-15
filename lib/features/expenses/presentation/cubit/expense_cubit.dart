@@ -35,15 +35,11 @@ class ExpenseCubit extends Cubit<ExpenseState> {
       return;
     }
 
-    // Preserve current expenses before clearing (for error recovery)
+    // FIX: Preserve previous data during loading to prevent UI flicker (data→empty→data).
+    // NEVER clear allExpenses/filteredExpenses when loading; only set loading flag.
     final previousExpenses = state.allExpenses;
-
-    // Clear state immediately when loading starts (for context changes)
-    // This ensures old data is not visible while loading new data
     emit(
       state.copyWith(
-        allExpenses: const [],
-        filteredExpenses: const [],
         isInitialLoading: true,
         clearError: true,
       ),
@@ -261,7 +257,6 @@ class ExpenseCubit extends Cubit<ExpenseState> {
       // Note: Account balance updates are handled by the backend API
       // No need to manually update account balance here
 
-      // Reload expenses with forceRefresh to bypass guard
       debugPrint('🔄 إعادة تحميل المصروفات بعد التعديل...');
       loadExpenses(forceRefresh: true);
     } catch (error) {

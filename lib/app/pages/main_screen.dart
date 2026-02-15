@@ -113,12 +113,8 @@ class _MainScreenState extends State<MainScreen> {
       );
       context.read<UserCubit>().setCurrentUser(entity);
       context.read<SettingsCubit>().loadSettings(forceReload: true);
-      context.read<AccountCubit>().initializeAccounts();
-      context.read<ExpenseCubit>().loadExpenses(forceRefresh: true);
-      final now = DateTime.now();
-      context.read<BudgetCubit>().loadBudgetsForMonth(now.year, now.month);
-      context.read<RecurringExpenseCubit>().loadRecurringExpenses();
-      context.read<UserCubit>().loadUsers();
+      // FIX: Don't load here - BlocListener will trigger _loadDataForCurrentUser
+      // and avoid duplicate API calls / race conditions.
     } catch (_) {}
     if (mounted) setState(() => _isInitializing = false);
   }

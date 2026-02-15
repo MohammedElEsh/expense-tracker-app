@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import 'package:expense_tracker/core/di/injection.dart';
 
 import 'package:expense_tracker/app/router/route_names.dart';
 import 'package:expense_tracker/app/router/route_guards.dart';
@@ -30,7 +33,9 @@ import 'package:expense_tracker/features/recurring_expenses/presentation/pages/r
 import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
 
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_detail_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/get_expense_by_id_usecase.dart';
 
 import 'package:expense_tracker/features/projects/presentation/pages/projects_screen.dart';
 import 'package:expense_tracker/features/projects/presentation/pages/project_details_screen.dart';
@@ -46,7 +51,8 @@ import 'package:expense_tracker/features/companies/domain/entities/company_entit
 
 import 'package:expense_tracker/features/notifications/presentation/pages/notifications_screen.dart';
 import 'package:expense_tracker/features/subscriptions/presentation/pages/subscription_screen.dart';
-import 'package:expense_tracker/features/ocr/presentation/pages/ocr_scanner_screen.dart' show OCRScannerScreen;
+import 'package:expense_tracker/features/ocr/presentation/pages/ocr_scanner_screen.dart'
+    show OCRScannerScreen;
 import 'package:expense_tracker/features/users/presentation/pages/user_management_screen.dart';
 import 'package:expense_tracker/features/users/presentation/pages/add_user_screen.dart';
 import 'package:expense_tracker/features/users/presentation/pages/edit_user_screen.dart';
@@ -81,28 +87,32 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const PersonalSignupScreen(),
     ),
     ShellRoute(
-      builder: (context, state, child) =>
-          MainScreen(currentLocation: state.uri.path, child: child),
+      builder:
+          (context, state, child) =>
+              MainScreen(currentLocation: state.uri.path, child: child),
       routes: [
         GoRoute(
           path: AppRoutes.home,
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: HomeScreen()),
+          pageBuilder:
+              (context, state) => const NoTransitionPage(child: HomeScreen()),
         ),
         GoRoute(
           path: AppRoutes.statistics,
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: StatisticsScreen()),
+          pageBuilder:
+              (context, state) =>
+                  const NoTransitionPage(child: StatisticsScreen()),
         ),
         GoRoute(
           path: AppRoutes.budgets,
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: BudgetManagementScreen()),
+          pageBuilder:
+              (context, state) =>
+                  const NoTransitionPage(child: BudgetManagementScreen()),
         ),
         GoRoute(
           path: AppRoutes.settings,
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: SettingsScreen()),
+          pageBuilder:
+              (context, state) =>
+                  const NoTransitionPage(child: SettingsScreen()),
         ),
       ],
     ),
@@ -146,7 +156,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final expense = state.extra as Expense?;
         if (expense == null) return const SizedBox.shrink();
-        return ExpenseDetailsScreen(expense: expense);
+        return BlocProvider<ExpenseDetailCubit>(
+          create:
+              (_) => ExpenseDetailCubit(
+                getExpenseByIdUseCase: getIt<GetExpenseByIdUseCase>(),
+                initialExpense: expense,
+              ),
+          child: ExpenseDetailsScreen(expense: expense),
+        );
       },
     ),
     GoRoute(

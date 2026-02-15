@@ -25,6 +25,8 @@ final class UserLoaded extends UserState {
   final UserRole? selectedRole;
   final String? selectedDepartment;
   final String? error;
+  /// FIX: When true, preserve users/currentUser during load (no flicker).
+  final bool isLoading;
 
   const UserLoaded({
     this.users = const [],
@@ -34,6 +36,7 @@ final class UserLoaded extends UserState {
     this.selectedRole,
     this.selectedDepartment,
     this.error,
+    this.isLoading = false,
   });
 
   List<UserEntity> get effectiveUsers {
@@ -56,6 +59,7 @@ final class UserLoaded extends UserState {
     UserRole? selectedRole,
     String? selectedDepartment,
     String? error,
+    bool? isLoading,
     bool clearError = false,
   }) {
     return UserLoaded(
@@ -66,6 +70,7 @@ final class UserLoaded extends UserState {
       selectedRole: selectedRole ?? this.selectedRole,
       selectedDepartment: selectedDepartment ?? this.selectedDepartment,
       error: clearError ? null : (error ?? this.error),
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 
@@ -78,6 +83,7 @@ final class UserLoaded extends UserState {
         selectedRole,
         selectedDepartment,
         error,
+        isLoading,
       ];
 }
 

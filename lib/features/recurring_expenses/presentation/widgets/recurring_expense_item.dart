@@ -89,7 +89,7 @@ class RecurringExpenseItem extends StatelessWidget {
                       context,
                     ).withValues(alpha: 0.1),
                     child: Icon(
-                      Categories.getIcon(expense.category),
+                      Icons.account_balance_wallet,
                       color: _getStatusColor(context),
                     ),
                   ),

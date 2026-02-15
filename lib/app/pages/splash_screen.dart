@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:expense_tracker/app/router/route_guards.dart';
 import 'package:expense_tracker/app/router/route_names.dart';
 
-/// Shows app logo until async auth resolves, then navigates to onboarding, login, or home.
-/// Includes timeout and safety timer so the app never stays stuck on logo.
+/// Minimal resolver screen. Checks auth/onboarding and navigates to home, login, or onboarding.
+/// No visible splash UI — resolves and navigates immediately.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -19,20 +19,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Safety: if still on splash after 6 seconds, force go to onboarding
-    Future<void>.delayed(const Duration(seconds: 6), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAndNavigate());
+    Future<void>.delayed(const Duration(seconds: 4), () {
       if (!mounted || _hasNavigated) return;
       _hasNavigated = true;
       debugPrint('⚠️ Splash timeout — forcing navigation to onboarding');
       _navigateTo(AppRoutes.onboarding);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAndNavigate());
   }
 
   void _navigateTo(String route) {
     if (!mounted) return;
     try {
-      GoRouter.of(context).go(route);
+      context.go(route);
     } catch (e) {
       debugPrint('⚠️ go(route) failed: $e');
     }
@@ -42,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
     String route = AppRoutes.onboarding;
     try {
       route = await resolveInitialRoute().timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 3),
         onTimeout: () {
           debugPrint('⚠️ resolveInitialRoute timeout');
           return AppRoutes.onboarding;
@@ -55,34 +54,18 @@ class _SplashScreenState extends State<SplashScreen> {
     }
     if (!mounted || _hasNavigated) return;
     _hasNavigated = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _navigateTo(route);
-    });
+    if (!mounted) return;
+    _navigateTo(route);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.account_balance_wallet,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Spendly',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(),
-          ],
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );

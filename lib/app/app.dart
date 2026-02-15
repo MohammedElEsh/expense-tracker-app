@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:expense_tracker/core/di/injection.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:expense_tracker/features/expenses/domain/usecases/add_expense_usecase.dart';
 import 'package:expense_tracker/features/expenses/domain/usecases/delete_expense_usecase.dart';
 import 'package:expense_tracker/features/expenses/domain/usecases/get_expenses_usecase.dart';
@@ -60,6 +61,9 @@ import 'package:expense_tracker/features/projects/domain/usecases/get_project_re
 import 'package:expense_tracker/features/projects/domain/usecases/get_projects_usecase.dart';
 import 'package:expense_tracker/features/projects/domain/usecases/get_projects_statistics_usecase.dart';
 import 'package:expense_tracker/features/projects/domain/usecases/update_project_usecase.dart';
+import 'package:expense_tracker/features/home/domain/usecases/calculate_total_amount_usecase.dart';
+import 'package:expense_tracker/features/home/domain/usecases/filter_expenses_by_view_mode_usecase.dart';
+import 'package:expense_tracker/features/home/presentation/cubit/home_cubit.dart';
 import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
 import 'package:expense_tracker/features/users/domain/usecases/create_user_usecase.dart';
 import 'package:expense_tracker/features/users/domain/usecases/delete_user_usecase.dart';
@@ -78,6 +82,15 @@ class ExpenseTrackerApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         // ✅ Create Cubits without loading data - data will load after authentication
+        // FIX: HomeCubit at app level so it persists across tab switches (no recreation).
+        BlocProvider(
+          create: (context) => HomeCubit(
+            logoutUseCase: getIt<LogoutUseCase>(),
+            filterExpensesByViewModeUseCase:
+                getIt<FilterExpensesByViewModeUseCase>(),
+            calculateTotalAmountUseCase: getIt<CalculateTotalAmountUseCase>(),
+          ),
+        ),
         BlocProvider(
           create: (context) {
             debugPrint('🚀 Creating ExpenseCubit (data will load after auth)');

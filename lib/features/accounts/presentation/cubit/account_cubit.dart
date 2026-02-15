@@ -55,13 +55,8 @@ class AccountCubit extends Cubit<AccountState> {
   Future<void> initializeAccounts() async {
     if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) return;
 
-    emit(state.copyWith(
-      accounts: const [],
-      defaultAccount: null,
-      selectedAccount: null,
-      isLoading: true,
-      clearError: true,
-    ));
+    // FIX: Preserve previous accounts during load to prevent UI flicker.
+    emit(state.copyWith(isLoading: true, clearError: true));
 
     try {
       final accounts = await _getAccounts();
@@ -75,10 +70,8 @@ class AccountCubit extends Cubit<AccountState> {
       loadDefaultAccount();
     } catch (error) {
       debugPrint('❌ Error initializing accounts: $error');
+      // FIX: Restore previous state on error, don't clear accounts.
       emit(state.copyWith(
-        accounts: const [],
-        defaultAccount: null,
-        selectedAccount: null,
         isLoading: false,
         error: 'خطأ في تهيئة الحسابات: $error',
       ));
@@ -88,24 +81,16 @@ class AccountCubit extends Cubit<AccountState> {
   Future<void> loadAccounts() async {
     if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) return;
 
-    emit(state.copyWith(
-      accounts: const [],
-      defaultAccount: null,
-      selectedAccount: null,
-      isLoading: true,
-      clearError: true,
-    ));
+    // FIX: Preserve previous accounts during load to prevent UI flicker.
+    emit(state.copyWith(isLoading: true, clearError: true));
 
     try {
       final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts, isLoading: false, hasLoaded: true));
     } catch (error) {
       debugPrint('❌ Error loading accounts: $error');
-      emit(state.copyWith(
-        accounts: const [],
-        isLoading: false,
-        error: 'خطأ في تحميل الحسابات: $error',
-      ));
+      // FIX: Preserve previous accounts on error.
+      emit(state.copyWith(isLoading: false, error: 'خطأ في تحميل الحسابات: $error'));
     }
   }
 

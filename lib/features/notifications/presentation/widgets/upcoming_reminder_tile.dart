@@ -35,11 +35,7 @@ class UpcomingReminderTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
-          item.isToday
-              ? Icons.today_rounded
-              : item.isTomorrow
-              ? Icons.event_available_rounded
-              : Icons.schedule_rounded,
+          Icons.account_balance_wallet,
           color: primaryColor,
         ),
       ),

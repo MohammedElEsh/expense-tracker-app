@@ -28,7 +28,6 @@ import 'package:expense_tracker/features/projects/presentation/cubit/project_cub
 import 'package:expense_tracker/features/projects/presentation/cubit/project_state.dart';
 import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
 import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
-import 'package:expense_tracker/core/di/injection.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/search_filter_widget.dart';
 import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:expense_tracker/app/widgets/app_drawer.dart';
@@ -233,16 +232,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<HomeCubit>(),
-      child: BlocListener<HomeCubit, HomeState>(
-        listenWhen: (prev, curr) =>
-            prev.isLoggingOut && !curr.isLoggingOut && curr.logoutError == null,
-        listener: (context, state) {
-          if (!mounted) return;
-          context.go(AppRoutes.login);
-        },
-        child: BlocBuilder<HomeCubit, HomeState>(
+    // FIX: HomeCubit provided at app level - no BlocProvider here (prevents recreation on rebuild).
+    return BlocListener<HomeCubit, HomeState>(
+      listenWhen: (prev, curr) =>
+          prev.isLoggingOut && !curr.isLoggingOut && curr.logoutError == null,
+      listener: (context, state) {
+        if (!mounted) return;
+        context.go(AppRoutes.login);
+      },
+      child: BlocBuilder<HomeCubit, HomeState>(
           builder: (context, homeState) {
             return BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, settings) {
@@ -310,7 +308,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             );
                           }
 
-                          // HomeCubit runs filter and total use cases; only emits when result changes
+                          // HomeCubit.updateDisplayData only emits when result changes (guard inside).
+                          // Data preserved during load (ExpenseCubit fix) prevents flicker.
                           context.read<HomeCubit>().updateDisplayData(
                                 expenseState.allExpenses,
                                 accountId:
@@ -538,7 +537,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             },
           );
         },
-      ),
       ),
     );
   }

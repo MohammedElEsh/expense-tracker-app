@@ -29,12 +29,8 @@ class BudgetCubit extends Cubit<BudgetState> {
   final ClearBudgetCacheUseCase _clearCache;
 
   Future<void> loadBudgets() async {
-    emit(state.copyWith(
-      allBudgets: const [],
-      monthlyBudgets: const {},
-      isLoading: true,
-      clearError: true,
-    ));
+    // FIX: Preserve previous data during load to prevent UI flicker.
+    emit(state.copyWith(isLoading: true, clearError: true));
 
     try {
       final now = DateTime.now();
@@ -55,22 +51,13 @@ class BudgetCubit extends Cubit<BudgetState> {
       ));
     } catch (error) {
       debugPrint('❌ Error loading budgets: $error');
-      emit(state.copyWith(
-        allBudgets: const [],
-        monthlyBudgets: const {},
-        isLoading: false,
-        error: 'خطأ في تحميل الميزانيات: $error',
-      ));
+      emit(state.copyWith(isLoading: false, error: 'خطأ في تحميل الميزانيات: $error'));
     }
   }
 
   Future<void> loadBudgetsForMonth(int year, int month) async {
-    emit(state.copyWith(
-      allBudgets: const [],
-      monthlyBudgets: const {},
-      isLoading: true,
-      clearError: true,
-    ));
+    // FIX: Preserve previous data during load to prevent UI flicker.
+    emit(state.copyWith(isLoading: true, clearError: true));
 
     try {
       final budgets = await _getBudgets(month: month, year: year);
@@ -89,10 +76,7 @@ class BudgetCubit extends Cubit<BudgetState> {
       ));
     } catch (error) {
       debugPrint('❌ Error loading monthly budgets: $error');
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'خطأ في تحميل ميزانيات الشهر: $error',
-      ));
+      emit(state.copyWith(isLoading: false, error: 'خطأ في تحميل ميزانيات الشهر: $error'));
     }
   }
 

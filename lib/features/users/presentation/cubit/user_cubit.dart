@@ -22,13 +22,29 @@ class UserCubit extends Cubit<UserState> {
   }) : super(const UserInitial());
 
   Future<void> loadUsers() async {
-    emit(const UserLoading());
+    // FIX: Preserve users/currentUser during load to prevent UI flicker.
+    final prev = state is UserLoaded ? state as UserLoaded : null;
+    if (prev != null) {
+      emit(prev.copyWith(isLoading: true));
+    } else {
+      emit(const UserLoading());
+    }
     try {
       final users = await getUsersUseCase();
-      emit(UserLoaded(users: users, error: null));
+      emit(UserLoaded(
+        users: users,
+        currentUser: prev?.currentUser,
+        filteredUsers: const [],
+        error: null,
+        isLoading: false,
+      ));
     } catch (e) {
       debugPrint('❌ UserCubit loadUsers: $e');
-      emit(UserError(e.toString()));
+      if (prev != null) {
+        emit(prev.copyWith(isLoading: false, error: e.toString()));
+      } else {
+        emit(UserError(e.toString()));
+      }
     }
   }
 

@@ -67,7 +67,7 @@ class RecurringExpenseCubit extends Cubit<RecurringExpenseState> {
     if (state.isLoading || (state.hasLoaded && state.allRecurringExpenses.isNotEmpty)) {
       return;
     }
-    emit(const RecurringExpenseLoading());
+    // FIX: Use Initial for first load (no previous data); never emit Loading that clears data.
     try {
       final list = await getRecurringExpensesUseCase(forceRefresh: false);
       final total = _monthlyTotal(list);
@@ -83,34 +83,41 @@ class RecurringExpenseCubit extends Cubit<RecurringExpenseState> {
   }
 
   Future<void> refreshRecurringExpenses() async {
-    emit(const RecurringExpenseLoading());
-    final previous = state.allRecurringExpenses;
+    // FIX: Preserve previous data during refresh to prevent flicker.
+    final prevLoaded = state is RecurringExpenseLoaded ? state as RecurringExpenseLoaded : null;
+    if (prevLoaded != null) {
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: prevLoaded.allRecurringExpenses,
+        filteredRecurringExpenses: prevLoaded.filteredRecurringExpenses,
+        monthlyTotal: prevLoaded.monthlyTotal,
+        selectedCategory: prevLoaded.selectedCategory,
+        selectedStatus: prevLoaded.selectedStatus,
+        selectedFrequency: prevLoaded.selectedFrequency,
+        isRefreshing: true,
+      ));
+    }
     try {
       final list = await getRecurringExpensesUseCase(forceRefresh: true);
       final total = _monthlyTotal(list);
       emit(RecurringExpenseLoaded(
         allRecurringExpenses: list,
-        filteredRecurringExpenses: _applyFilters(list),
+        filteredRecurringExpenses: _applyFilters(list, existing: prevLoaded),
         monthlyTotal: total,
-        selectedCategory: state is RecurringExpenseLoaded
-            ? (state as RecurringExpenseLoaded).selectedCategory
-            : null,
-        selectedStatus: state is RecurringExpenseLoaded
-            ? (state as RecurringExpenseLoaded).selectedStatus
-            : null,
-        selectedFrequency: state is RecurringExpenseLoaded
-            ? (state as RecurringExpenseLoaded).selectedFrequency
-            : null,
+        selectedCategory: prevLoaded?.selectedCategory,
+        selectedStatus: prevLoaded?.selectedStatus,
+        selectedFrequency: prevLoaded?.selectedFrequency,
+        isRefreshing: false,
       ));
     } catch (e) {
       debugPrint('RecurringExpenseCubit refreshRecurringExpenses error: $e');
-      emit(RecurringExpenseError(_messageFromError(e)));
-      if (previous.isNotEmpty) {
-        emit(RecurringExpenseLoaded(
-          allRecurringExpenses: previous,
-          filteredRecurringExpenses: previous,
-          monthlyTotal: _monthlyTotal(previous),
+      // FIX: Preserve data on error; show error in lastError for snackbar.
+      if (prevLoaded != null) {
+        emit(prevLoaded.copyWith(
+          isRefreshing: false,
+          lastError: _messageFromError(e),
         ));
+      } else {
+        emit(RecurringExpenseError(_messageFromError(e)));
       }
     }
   }
@@ -157,7 +164,18 @@ class RecurringExpenseCubit extends Cubit<RecurringExpenseState> {
 
   Future<void> updateRecurringExpense(RecurringExpenseEntity entity) async {
     final prev = state is RecurringExpenseLoaded ? state as RecurringExpenseLoaded : null;
-    emit(const RecurringExpenseLoading());
+    // FIX: Preserve data during update - use isRefreshing instead of Loading.
+    if (prev != null) {
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: prev.allRecurringExpenses,
+        filteredRecurringExpenses: prev.filteredRecurringExpenses,
+        monthlyTotal: prev.monthlyTotal,
+        selectedCategory: prev.selectedCategory,
+        selectedStatus: prev.selectedStatus,
+        selectedFrequency: prev.selectedFrequency,
+        isRefreshing: true,
+      ));
+    }
     try {
       final updated = await updateRecurringExpenseUseCase(entity);
       final list = prev?.allRecurringExpenses ?? [];
@@ -170,13 +188,16 @@ class RecurringExpenseCubit extends Cubit<RecurringExpenseState> {
         selectedCategory: prev?.selectedCategory,
         selectedStatus: prev?.selectedStatus,
         selectedFrequency: prev?.selectedFrequency,
+        isRefreshing: false,
       ));
     } catch (e) {
       debugPrint('RecurringExpenseCubit updateRecurringExpense error: $e');
+      // FIX: Preserve data on error; show error in lastError for snackbar.
       if (prev != null) {
-        emit(prev);
+        emit(prev.copyWith(isRefreshing: false, lastError: _messageFromError(e)));
+      } else {
+        emit(RecurringExpenseError(_messageFromError(e)));
       }
-      emit(RecurringExpenseError(_messageFromError(e)));
     }
   }
 
