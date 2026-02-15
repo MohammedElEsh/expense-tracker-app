@@ -1,7 +1,10 @@
-// ✅ Add User Screen - Form for adding new users (Owner only)
+// ✅ Add User Screen - Uses UserCubit only (no service/API access).
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
+import 'package:expense_tracker/features/users/presentation/utils/user_role_display.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 
 /// Add User Screen - Allows Owner to add new users (employee, accountant, auditor)
@@ -34,24 +37,18 @@ class _AddUserScreenState extends State<AddUserScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final isRTL = Directionality.of(context) == TextDirection.rtl;
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      await serviceLocator.userApiService.addUser(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        role: _selectedRole,
-      );
-
+      await context.read<UserCubit>().addUser(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            role: _selectedRole,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -61,38 +58,29 @@ class _AddUserScreenState extends State<AddUserScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        context.pop(true);
       }
     } catch (e) {
-      debugPrint('❌ Error adding user: $e');
       if (mounted) {
         String errorMessage;
         if (e is ValidationException) {
           errorMessage = e.message;
         } else if (e is NetworkException) {
-          errorMessage =
-              isRTL
-                  ? 'خطأ في الاتصال بالشبكة'
-                  : 'Network error. Please check your connection.';
+          errorMessage = isRTL
+              ? 'خطأ في الاتصال بالشبكة'
+              : 'Network error. Please check your connection.';
         } else if (e is ServerException) {
           errorMessage = e.message;
         } else {
           errorMessage =
-              isRTL
-                  ? 'فشل إضافة المستخدم'
-                  : 'Failed to add user: ${e.toString()}';
+              isRTL ? 'فشل إضافة المستخدم' : 'Failed to add user: ${e.toString()}';
         }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -276,9 +264,8 @@ class _AddUserScreenState extends State<AddUserScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Role Options (employee, accountant, auditor - owner not available)
               ...UserRole.values
-                  .where((role) => role != UserRole.owner)
+                  .where((r) => r != UserRole.owner)
                   .map(
                     (role) => RadioListTile<UserRole>(
                       title: Text(role.getDisplayName(isRTL)),
@@ -289,11 +276,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
                       value: role,
                       groupValue: _selectedRole,
                       onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedRole = value;
-                          });
-                        }
+                        if (value != null) setState(() => _selectedRole = value);
                       },
                       secondary: Icon(role.icon, color: role.color),
                     ),

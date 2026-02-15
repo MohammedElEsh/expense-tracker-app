@@ -1,59 +1,89 @@
-// Statistics Feature - Cubit
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:expense_tracker/features/statistics/domain/usecases/get_statistics_usecase.dart';
+import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_period.dart';
 import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_state.dart';
+import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_tab.dart';
 
-/// Statistics Cubit for managing time period selections
+/// Statistics Cubit: holds UI state and aggregated statistics from use cases only.
+/// No direct service/API/Cubit access.
 class StatisticsCubit extends Cubit<StatisticsState> {
-  StatisticsCubit() : super(StatisticsState());
+  StatisticsCubit({
+    required GetStatisticsUseCase getStatisticsUseCase,
+  })  : _getStatisticsUseCase = getStatisticsUseCase,
+        super(StatisticsState());
 
-  /// Change the active statistics tab (monthly, yearly, weekly, etc.)
+  final GetStatisticsUseCase _getStatisticsUseCase;
+
+  StatisticsPeriod get selectedPeriod => state.period;
+  StatisticsTab get selectedTab => state.tab;
+
+  void selectPeriod(StatisticsPeriod period) {
+    emit(state.copyWith(period: period));
+    loadStatistics();
+  }
+
+  void selectTab(StatisticsTab tab) {
+    emit(state.copyWith(tab: tab));
+  }
+
   void changeTab(int index) {
-    debugPrint('📊 StatisticsCubit: Changing tab to $index');
     emit(state.copyWith(selectedTabIndex: index));
   }
 
-  /// Change the selected year for statistics
   void changeYear(int year) {
-    debugPrint('📊 StatisticsCubit: Changing year to $year');
     emit(state.copyWith(selectedYear: year));
+    loadStatistics();
   }
 
-  /// Change the selected month for statistics
   void changeMonth(int month) {
-    debugPrint('📊 StatisticsCubit: Changing month to $month');
     emit(state.copyWith(selectedMonth: month));
+    loadStatistics();
   }
 
-  /// Navigate to the previous month, adjusting year if needed
   void navigateToPreviousMonth() {
     int newMonth = state.selectedMonth - 1;
     int newYear = state.selectedYear;
-
     if (newMonth < 1) {
       newMonth = 12;
       newYear -= 1;
     }
-
-    debugPrint(
-      '📊 StatisticsCubit: Navigating to previous month: $newYear-$newMonth',
-    );
     emit(state.copyWith(selectedMonth: newMonth, selectedYear: newYear));
+    loadStatistics();
   }
 
-  /// Navigate to the next month, adjusting year if needed
   void navigateToNextMonth() {
     int newMonth = state.selectedMonth + 1;
     int newYear = state.selectedYear;
-
     if (newMonth > 12) {
       newMonth = 1;
       newYear += 1;
     }
-
-    debugPrint(
-      '📊 StatisticsCubit: Navigating to next month: $newYear-$newMonth',
-    );
     emit(state.copyWith(selectedMonth: newMonth, selectedYear: newYear));
+    loadStatistics();
+  }
+
+  /// Load statistics for current period/year/month via use case.
+  Future<void> loadStatistics() async {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      final entity = await _getStatisticsUseCase(
+        period: state.period,
+        year: state.selectedYear,
+        month: state.selectedMonth,
+      );
+      emit(state.copyWith(
+        statistics: entity,
+        isLoading: false,
+        clearError: true,
+      ));
+    } catch (e, st) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+        clearError: false,
+      ));
+      // ignore: avoid_print
+      print('StatisticsCubit.loadStatistics error: $e $st');
+    }
   }
 }

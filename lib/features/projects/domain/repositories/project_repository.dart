@@ -1,48 +1,21 @@
-import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_report_entity.dart';
 
-/// Abstract repository interface for project operations.
-///
-/// Defines the contract for project data access. Implementations
-/// handle the actual data fetching (API, local cache, etc.).
+/// Repository interface for project operations.
 abstract class ProjectRepository {
-  /// Get all projects with optional filters and pagination.
-  ///
-  /// Filter by [status] (e.g. 'active', 'completed').
-  /// Paginate with [page] and [limit].
-  /// Set [forceRefresh] to `true` to bypass cached data.
-  Future<ProjectsResponse> getAllProjects({
-    String? status,
-    int? page,
-    int? limit,
-    bool forceRefresh = false,
-  });
+  Future<List<ProjectEntity>> getProjects({bool forceRefresh = false});
 
-  /// Get a single project by its [projectId].
-  ///
-  /// Returns `null` if not found.
-  Future<Project?> getProjectById(String projectId);
+  Future<ProjectEntity?> getProjectById(String id);
 
-  /// Get a detailed project report including expenses.
-  ///
-  /// Returns a [ProjectReport] with project details, expenses list,
-  /// remaining budget, progress, and over-budget status.
-  Future<ProjectReport> getProjectReport(String projectId);
+  Future<ProjectEntity> createProject(ProjectEntity project);
 
-  /// Create a new project.
-  ///
-  /// Only available in business mode. Returns the created [Project].
-  Future<Project> createProject(Project project);
+  Future<ProjectEntity> updateProject(ProjectEntity project);
 
-  /// Update an existing project.
-  ///
-  /// Takes the [projectId] and the updated [Project] object.
-  /// Returns the updated [Project].
-  Future<Project> updateProject(String projectId, Project project);
+  Future<void> deleteProject(String id);
 
-  /// Delete a project by its [projectId].
-  Future<void> deleteProject(String projectId);
+  Future<ProjectReportEntity> getProjectReport(String projectId);
 
-  /// Clear any cached project data.
+  Future<Map<String, dynamic>> getProjectsStatistics();
+
   void clearCache();
 }

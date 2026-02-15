@@ -1,24 +1,27 @@
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/network/api_service.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 
 // =============================================================================
 // VENDOR SERVICE - Clean Architecture Remote Data Source
 // =============================================================================
 
-/// Remote data source for vendors using REST API
-/// Uses core services: ApiService
-/// No Firebase dependencies - pure REST API implementation
+/// Remote data source for vendors using REST API.
+/// Uses ApiService and AppContext (no static SettingsService).
 class VendorService {
   final ApiService _apiService;
+  final AppContext _appContext;
 
-  // Cache for vendors
   List<Vendor>? _cachedVendors;
 
-  VendorService({required ApiService apiService}) : _apiService = apiService;
+  VendorService({
+    required ApiService apiService,
+    required AppContext appContext,
+  })  : _apiService = apiService,
+        _appContext = appContext;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -53,8 +56,8 @@ class VendorService {
   /// }
   Future<Vendor> createVendor(Vendor vendor) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('➕ Creating vendor: ${vendor.name}');
 
@@ -128,8 +131,8 @@ class VendorService {
   /// GET /api/vendors
   Future<List<Vendor>> getAllVendors() async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint(
         '🔍 getAllVendors - Mode: $currentAppMode, Company: $companyId',
@@ -186,8 +189,8 @@ class VendorService {
     String? sort,
   }) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('🔍 getFilteredVendors - Page: $page, Limit: $limit');
 
@@ -253,8 +256,8 @@ class VendorService {
   /// GET /api/vendors?top10
   Future<List<Vendor>> getTop10Vendors() async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('🔍 getTop10Vendors');
 

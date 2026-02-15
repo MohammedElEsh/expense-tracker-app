@@ -1,10 +1,12 @@
-// Recurring Expense Details - Status & Frequency Card Widget
+// Recurring Expense Details - Status & Frequency Card (domain entity only)
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurrence_type.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/utils/recurring_expense_display_helper.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class RecurringExpenseStatusFrequencyCard extends StatelessWidget {
-  final RecurringExpense recurringExpense;
+  final RecurringExpenseEntity recurringExpense;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -72,7 +74,7 @@ class RecurringExpenseStatusFrequencyCard extends StatelessWidget {
                 child: _buildInfoItem(
                   Icons.repeat,
                   isRTL ? 'نوع التكرار' : 'Frequency',
-                  recurringExpense.recurrenceType.displayName,
+                  recurringExpense.recurrenceType.displayName(isRTL),
                   _getFrequencyColor(recurringExpense.recurrenceType),
                 ),
               ),

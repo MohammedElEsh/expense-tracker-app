@@ -4,10 +4,11 @@ import 'package:expense_tracker/core/utils/date_time_utils.dart';
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:go_router/go_router.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
-import 'package:expense_tracker/core/services/permission_service.dart';
+import 'package:expense_tracker/features/users/domain/utils/permission_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -238,9 +239,10 @@ class ExpenseItem extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xs),
                     BlocBuilder<UserCubit, UserState>(
                       builder: (context, userState) {
+                        final currentUser = userState is UserLoaded ? userState.currentUser : null;
                         final canDelete =
-                            PermissionService.canDeleteSpecificExpense(
-                              userState.currentUser,
+                            PermissionService.canDeleteSpecificExpenseEntity(
+                              currentUser,
                               expense.employeeId ?? '',
                             );
                         if (!canDelete) return const SizedBox.shrink();
@@ -287,7 +289,7 @@ class ExpenseItem extends StatelessWidget {
                   top: isTablet ? AppSpacing.xl : AppSpacing.md,
                   right: isTablet ? AppSpacing.xl : AppSpacing.md,
                   child: IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.pop(),
                     icon: Icon(
                       Icons.close,
                       color: Colors.white,
@@ -324,7 +326,7 @@ class ExpenseItem extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => context.pop(),
               child: Text(
                 isRTL ? 'إلغاء' : 'Cancel',
                 style:
@@ -336,7 +338,7 @@ class ExpenseItem extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 onDelete();
-                Navigator.of(context).pop();
+                context.pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
@@ -361,11 +363,7 @@ class ExpenseItem extends StatelessWidget {
   }
 
   void _navigateToDetails(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ExpenseDetailsScreen(expense: expense),
-      ),
-    );
+    context.push(AppRoutes.expenseDetails, extra: expense);
   }
 }
 

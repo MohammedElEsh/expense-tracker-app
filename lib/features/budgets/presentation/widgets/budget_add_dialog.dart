@@ -1,9 +1,10 @@
 // Budget Add Dialog - نافذة إضافة ميزانية
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/constants/category_constants.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 
 class BudgetAddDialog extends StatefulWidget {
   final DateTime selectedMonth;
@@ -121,7 +122,7 @@ class _BudgetAddDialogState extends State<BudgetAddDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
           child: Text(widget.isRTL ? 'إلغاء' : 'Cancel'),
         ),
         ElevatedButton(

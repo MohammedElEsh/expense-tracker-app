@@ -1,26 +1,24 @@
-// ✅ Refactored Vendor Details Screen - Clean & Modular
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-
-// Import refactored widgets
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_header_card.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_statistics_section.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_info_card.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/details/vendor_expenses_section.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 
 class VendorDetailsScreen extends StatefulWidget {
-  final Vendor vendor;
+  final VendorEntity vendor;
 
   const VendorDetailsScreen({super.key, required this.vendor});
 
@@ -33,8 +31,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  late Vendor _currentVendor;
-  bool _isRefreshing = false;
+  late VendorEntity _currentVendor;
 
   @override
   void initState() {
@@ -67,12 +64,21 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) {
-        final isRTL = settings.language == 'ar';
-        final isDesktop = context.isDesktop;
+    return BlocListener<VendorCubit, VendorState>(
+      listener: (context, state) {
+        if (state is VendorLoaded && mounted) {
+          final list = state.vendors.where((v) => v.id == _currentVendor.id).toList();
+          if (list.isNotEmpty) {
+            setState(() => _currentVendor = list.first);
+          }
+        }
+      },
+      child: BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, settings) {
+          final isRTL = settings.language == 'ar';
+          final isDesktop = context.isDesktop;
 
-        return Directionality(
+          return Directionality(
           textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
           child: Scaffold(
             backgroundColor: settings.surfaceColor,
@@ -89,18 +95,21 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
                 ),
               ),
               actions: [
-                IconButton(
-                  icon:
-                      _isRefreshing
+                BlocBuilder<VendorCubit, VendorState>(
+                  builder: (context, vendorState) {
+                    final refreshing = vendorState is VendorLoading;
+                    return IconButton(
+                      icon: refreshing
                           ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.edit_outlined),
-                  onPressed:
-                      _isRefreshing ? null : () => _showEditVendorDialog(),
-                  tooltip: isRTL ? 'تعديل المورد' : 'Edit Vendor',
+                      onPressed: refreshing ? null : () => _showEditVendorDialog(),
+                      tooltip: isRTL ? 'تعديل المورد' : 'Edit Vendor',
+                    );
+                  },
                 ),
               ],
             ),
@@ -172,13 +181,11 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 
-  // ============= Helper Methods =============
-
-  /// Show edit vendor dialog and refresh vendor data on success
   Future<void> _showEditVendorDialog() async {
     final result = await showDialog<bool>(
       context: context,
@@ -186,56 +193,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen>
     );
 
     if (result == true && mounted) {
-      await _refreshVendorData();
-    }
-  }
-
-  /// Refresh vendor data from API after successful update
-  Future<void> _refreshVendorData() async {
-    setState(() => _isRefreshing = true);
-
-    try {
-      final vendorService = serviceLocator.vendorService;
-      final updatedVendor = await vendorService.getVendorById(
-        _currentVendor.id,
-      );
-
-      if (updatedVendor != null && mounted) {
-        setState(() {
-          _currentVendor = updatedVendor;
-          _isRefreshing = false;
-        });
-
-        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL
-                  ? 'تم تحديث بيانات المورد بنجاح'
-                  : 'Vendor updated successfully',
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      } else {
-        setState(() => _isRefreshing = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isRefreshing = false);
-        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL
-                  ? 'خطأ في تحديث بيانات المورد: $e'
-                  : 'Error updating vendor: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      context.read<VendorCubit>().loadVendors();
     }
   }
 

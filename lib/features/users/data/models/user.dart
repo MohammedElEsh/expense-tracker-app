@@ -1,5 +1,5 @@
-import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 /// أدوار المستخدمين في النظام
 enum UserRole {
@@ -221,6 +221,38 @@ class User extends HiveObject {
               : null,
       profileImagePath: json['profileImagePath'],
       password: json['password'],
+    );
+  }
+
+  /// Create User from API response map (handles _id and optional createdAt).
+  factory User.fromApiMap(Map<String, dynamic> json) {
+    final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
+    final createdAtRaw = json['createdAt'];
+    final createdAt =
+        createdAtRaw != null
+            ? (DateTime.tryParse(createdAtRaw.toString()) ?? DateTime.now())
+            : DateTime.now();
+    final roleStr = (json['role']?.toString() ?? 'employee').toLowerCase();
+    final role = UserRole.values.firstWhere(
+      (r) => r.name == roleStr,
+      orElse: () => UserRole.employee,
+    );
+    return User(
+      id: id,
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+      role: role,
+      department: json['department']?.toString(),
+      employeeId: json['employeeId']?.toString(),
+      isActive: json['isActive'] as bool? ?? true,
+      createdAt: createdAt,
+      lastLoginAt:
+          json['lastLoginAt'] != null
+              ? DateTime.tryParse(json['lastLoginAt'].toString())
+              : null,
+      profileImagePath: json['profileImagePath']?.toString(),
+      password: json['password']?.toString(),
     );
   }
 

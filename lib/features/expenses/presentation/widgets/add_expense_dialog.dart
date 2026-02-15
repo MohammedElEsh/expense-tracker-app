@@ -1,6 +1,7 @@
 // ✅ Add Expense Dialog - Refactored with BLoC
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:ui' as ui;
 
@@ -23,19 +24,64 @@ import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/constants/category_constants.dart'
     show CategoryType;
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
+import 'package:expense_tracker/core/di/injection.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/add_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/update_expense_usecase.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart';
 
 class AddExpenseDialog extends StatefulWidget {
   final DateTime selectedDate;
   final Expense? expenseToEdit;
+  final List<Project>? projects;
+  final List<String>? vendorNames;
 
   const AddExpenseDialog({
     super.key,
     required this.selectedDate,
     this.expenseToEdit,
+    this.projects,
+    this.vendorNames,
   });
+
+  /// Creates the dialog wrapped in [BlocProvider] with [AddExpenseCubit].
+  /// Use this so UI does not call getIt directly; composition root is centralized here.
+  static Widget createWithCubit(
+    BuildContext context, {
+    required DateTime selectedDate,
+    Expense? expenseToEdit,
+    List<Project>? projects,
+    List<String>? vendorNames,
+  }) {
+    final settings = context.read<SettingsCubit>().state;
+    final cubit = AddExpenseCubit(
+      initialDate: selectedDate,
+      appMode: settings.appMode,
+      expenseToEdit: expenseToEdit,
+      addExpenseUseCase: getIt<AddExpenseUseCase>(),
+      updateExpenseUseCase: getIt<UpdateExpenseUseCase>(),
+    );
+    if (settings.appMode == AppMode.business &&
+        projects != null &&
+        vendorNames != null) {
+      cubit.setBusinessData(projects: projects, vendorNames: vendorNames);
+    } else {
+      cubit.loadBusinessData();
+    }
+    return BlocProvider<AddExpenseCubit>.value(
+      value: cubit,
+      child: AddExpenseDialog(
+        selectedDate: selectedDate,
+        expenseToEdit: expenseToEdit,
+        projects: projects,
+        vendorNames: vendorNames,
+      ),
+    );
+  }
 
   @override
   State<AddExpenseDialog> createState() => _AddExpenseDialogState();
@@ -141,7 +187,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
         );
 
         // Close dialog immediately after optimistic update (no need to wait for API)
-        Navigator.of(context).pop();
+        context.pop();
 
         // Show success message
         final isRTL = settings.language == 'ar';
@@ -173,20 +219,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) {
-        final settings = context.read<SettingsCubit>().state;
-
-        final bloc = AddExpenseCubit(
-          initialDate: widget.selectedDate,
-          appMode: settings.appMode,
-          expenseToEdit: widget.expenseToEdit, // ✅ Pass expense to edit
-        );
-
-        bloc.loadBusinessData();
-        return bloc;
-      },
-      child: BlocBuilder<SettingsCubit, SettingsState>(
+    return BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, settings) {
           // Set default category and account if not editing
           if (widget.expenseToEdit == null) {
@@ -246,7 +279,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 
                         // Navigate back with result
                         final result = widget.expenseToEdit;
-                        Navigator.of(context).pop(result);
+                        context.pop(result);
 
                         // Show success message
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -351,7 +384,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                                   Icons.close,
                                   color: settings.primaryTextColor,
                                 ),
-                                onPressed: () => Navigator.of(context).pop(),
+                                onPressed: () => context.pop(),
                               ),
                               title: Text(
                                 widget.expenseToEdit != null
@@ -540,10 +573,11 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                                                         addExpenseState
                                                             .employeeId,
                                                     availableEmployees:
-                                                        settings.isBusinessMode
-                                                            ? userState
-                                                                .activeUsers
-                                                            : [],
+                                                        settings.isBusinessMode &&
+                                                                userState
+                                                                    is UserLoaded
+                                                            ? userState.users
+                                                            : <UserEntity>[],
                                                     onProjectChanged: (
                                                       projectId,
                                                     ) {
@@ -634,7 +668,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
             },
           );
         },
-      ),
     );
   }
 }

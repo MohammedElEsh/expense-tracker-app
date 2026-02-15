@@ -1,189 +1,203 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/core/error/exceptions.dart';
-import 'package:expense_tracker/features/expenses/data/datasources/expense_api_service.dart';
-import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'ocr_state.dart';
+import 'package:expense_tracker/features/ocr/domain/entities/ocr_result_entity.dart';
+import 'package:expense_tracker/features/ocr/domain/repositories/ocr_repository.dart';
+import 'package:expense_tracker/features/ocr/domain/usecases/create_expense_from_ocr_usecase.dart';
+import 'package:expense_tracker/features/ocr/domain/usecases/parse_receipt_usecase.dart';
+import 'package:expense_tracker/features/ocr/domain/usecases/pick_image_usecase.dart';
+import 'package:expense_tracker/features/ocr/domain/usecases/scan_receipt_usecase.dart';
+import 'package:expense_tracker/features/ocr/presentation/cubit/ocr_state.dart';
 
-// OCR Cubit
+/// OCR Cubit: depends only on use cases (no direct service/datasource calls).
 class OcrCubit extends Cubit<OcrState> {
-  final ExpenseApiService _expenseApiService;
-  final ImagePicker _imagePicker;
+  final PickImageUseCase pickImageUseCase;
+  final ScanReceiptUseCase scanReceiptUseCase;
+  final ParseReceiptUseCase parseReceiptUseCase;
+  final CreateExpenseFromOcrUseCase createExpenseFromOcrUseCase;
 
-  OcrCubit({ExpenseApiService? expenseApiService, ImagePicker? imagePicker})
-    : _expenseApiService =
-          expenseApiService ?? serviceLocator.expenseApiService,
-      _imagePicker = imagePicker ?? ImagePicker(),
-      super(const OcrState());
+  OcrCubit({
+    required this.pickImageUseCase,
+    required this.scanReceiptUseCase,
+    required this.parseReceiptUseCase,
+    required this.createExpenseFromOcrUseCase,
+  }) : super(const OcrInitial());
 
+  /// Pick image from camera and update state with path.
   Future<void> pickImageFromCamera() async {
-    try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 85,
-        maxWidth: 1920,
-        maxHeight: 1920,
-      );
-
-      if (pickedFile != null) {
-        imagePicked(File(pickedFile.path));
-      }
-    } catch (e) {
-      debugPrint('❌ Error picking image from camera: $e');
-      emit(
-        state.copyWith(
-          error: 'Failed to pick image from camera: $e',
-          clearError: false,
-        ),
-      );
-    }
+    final path = await pickImageUseCase(OcrImageSource.camera);
+    if (path == null || !isClosed) return;
+    emit(OcrInitial(
+      selectedImagePath: path,
+      accountId: state.accountId,
+      category: state.category,
+    ));
   }
 
+  /// Pick image from gallery and update state with path.
   Future<void> pickImageFromGallery() async {
-    try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1920,
-        maxHeight: 1920,
-      );
+    final path = await pickImageUseCase(OcrImageSource.gallery);
+    if (path == null || !isClosed) return;
+    emit(OcrInitial(
+      selectedImagePath: path,
+      accountId: state.accountId,
+      category: state.category,
+    ));
+  }
 
-      if (pickedFile != null) {
-        imagePicked(File(pickedFile.path));
-      }
-    } catch (e) {
-      debugPrint('❌ Error picking image from gallery: $e');
-      emit(
-        state.copyWith(
-          error: 'Failed to pick image from gallery: $e',
-          clearError: false,
-        ),
-      );
+  /// Clear selected image; keep account and category.
+  void clearImage() {
+    emit(OcrInitial(
+      selectedImagePath: null,
+      accountId: state.accountId,
+      category: state.category,
+    ));
+  }
+
+  void setAccountId(String? value) {
+    emit(_copyWith(accountId: value));
+  }
+
+  void setCategory(String? value) {
+    emit(_copyWith(category: value));
+  }
+
+  /// Pick image from camera, then scan and parse in one flow (for simple "Scan" button).
+  Future<void> scanAndParse() async {
+    await pickImageFromCamera();
+    if (isClosed) return;
+    final path = state.selectedImagePath;
+    if (path != null && path.isNotEmpty) {
+      await scanReceipt();
     }
   }
 
-  void imagePicked(File imageFile) {
-    emit(
-      state.copyWith(
-        selectedImage: imageFile,
-        clearError: true,
-        isSuccess: false,
-        clearScannedExpense: true,
-      ),
-    );
-  }
-
-  void setAccountId(String accountId) {
-    emit(state.copyWith(accountId: accountId, clearError: true));
-  }
-
-  void setCategory(String? category) {
-    emit(state.copyWith(category: category, clearError: true));
-  }
-
+  /// Scan receipt using selected image, then parse; emits Loading → Success/Error.
   Future<void> scanReceipt() async {
-    if (!state.canScan) {
-      emit(
-        state.copyWith(
-          error: 'Please select an image and account before scanning',
-        ),
-      );
+    final path = state.selectedImagePath;
+    if (path == null || path.isEmpty) {
+      emit(OcrError(
+        'Please select an image first',
+        selectedImagePath: state.selectedImagePath,
+        accountId: state.accountId,
+        category: state.category,
+      ));
       return;
     }
-
-    emit(
-      state.copyWith(
-        isScanning: true,
-        clearError: true,
-        isSuccess: false,
-        clearScannedExpense: true,
-      ),
-    );
-
+    emit(OcrLoading(
+      selectedImagePath: state.selectedImagePath,
+      accountId: state.accountId,
+      category: state.category,
+    ));
     try {
-      final scannedExpense = await _expenseApiService.scanReceipt(
-        receiptImage: state.selectedImage!,
-        accountId: state.accountId!,
-        category: state.category,
-      );
-
-      // ✅ OCR Category Handling Fix:
-      // When OCR detects a category, always set selected category = "أخرى"
-      // and put the OCR detected value into customCategory field
-      // Do NOT try to match OCR category with predefined categories
-      Expense processedExpense = scannedExpense;
-      if (scannedExpense.category.isNotEmpty &&
-          scannedExpense.category != 'أخرى') {
-        // OCR detected a category - set to "أخرى" and move detected category to customCategory
-        final detectedCategory = scannedExpense.category;
-        processedExpense = scannedExpense.copyWith(
-          category: 'أخرى',
-          customCategory: detectedCategory,
-        );
-        debugPrint(
-          '📝 OCR detected category "$detectedCategory" - set to "أخرى" with customCategory',
-        );
+      final ref = await scanReceiptUseCase(path);
+      final result = await parseReceiptUseCase(ref);
+      if (!isClosed) {
+        emit(OcrSuccess(
+          result,
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
       }
-
-      emit(
-        state.copyWith(
-          isScanning: false,
-          scannedExpense: processedExpense,
-          isSuccess: true,
-          clearError: true,
-        ),
-      );
-
-      debugPrint('✅ Receipt scanned successfully');
-      debugPrint('   Amount: ${processedExpense.amount}');
-      debugPrint('   Category: ${processedExpense.category}');
-      debugPrint(
-        '   CustomCategory: ${processedExpense.customCategory ?? 'N/A'}',
-      );
-      debugPrint('   Vendor: ${processedExpense.vendorName ?? 'N/A'}');
-    } on ValidationException catch (e) {
-      emit(
-        state.copyWith(isScanning: false, error: e.message, isSuccess: false),
-      );
-    } on UnauthorizedException catch (e) {
-      emit(
-        state.copyWith(isScanning: false, error: e.message, isSuccess: false),
-      );
-    } on NetworkException catch (e) {
-      emit(
-        state.copyWith(isScanning: false, error: e.message, isSuccess: false),
-      );
-    } on ServerException catch (e) {
-      emit(
-        state.copyWith(isScanning: false, error: e.message, isSuccess: false),
-      );
     } catch (e) {
-      debugPrint('❌ Error scanning receipt: $e');
-      emit(
-        state.copyWith(
-          isScanning: false,
-          error: 'Failed to scan receipt: ${e.toString()}',
-          isSuccess: false,
-        ),
-      );
+      if (!isClosed) {
+        emit(OcrError(
+          e.toString(),
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
+      }
     }
   }
 
-  void clearImage() {
-    emit(
-      state.copyWith(
-        clearImage: true,
-        clearScannedExpense: true,
-        isSuccess: false,
-        clearError: true,
-      ),
-    );
+  /// Reset to initial state (no image, no account/category, no result).
+  void resetOcrState() {
+    emit(const OcrInitial());
   }
 
-  void resetOcrState() {
-    emit(const OcrState());
+  /// Parse raw input (e.g. manual entry); optional, for future use.
+  Future<void> parseInput(String input) async {
+    if (input.trim().isEmpty) {
+      emit(OcrError(
+        'Input is empty',
+        selectedImagePath: state.selectedImagePath,
+        accountId: state.accountId,
+        category: state.category,
+      ));
+      return;
+    }
+    emit(OcrLoading(
+      selectedImagePath: state.selectedImagePath,
+      accountId: state.accountId,
+      category: state.category,
+    ));
+    try {
+      final result = await parseReceiptUseCase(input.trim());
+      if (!isClosed) {
+        emit(OcrSuccess(
+          result,
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
+      }
+    } catch (e) {
+      if (!isClosed) {
+        emit(OcrError(
+          e.toString(),
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
+      }
+    }
+  }
+
+  /// Create expense from current result (call after Success).
+  Future<void> createExpenseFromResult(OcrResultEntity result) async {
+    emit(OcrLoading(
+      selectedImagePath: state.selectedImagePath,
+      accountId: state.accountId,
+      category: state.category,
+    ));
+    try {
+      await createExpenseFromOcrUseCase(result);
+      if (!isClosed) {
+        emit(OcrSuccess(
+          result,
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
+      }
+    } catch (e) {
+      if (!isClosed) {
+        emit(OcrError(
+          e.toString(),
+          selectedImagePath: state.selectedImagePath,
+          accountId: state.accountId,
+          category: state.category,
+        ));
+      }
+    }
+  }
+
+  OcrState _copyWith({String? accountId, String? category}) {
+    final a = accountId ?? state.accountId;
+    final c = category ?? state.category;
+    if (state is OcrSuccess) {
+      return OcrSuccess((state as OcrSuccess).result,
+          selectedImagePath: state.selectedImagePath, accountId: a, category: c);
+    }
+    if (state is OcrError) {
+      return OcrError((state as OcrError).message,
+          selectedImagePath: state.selectedImagePath, accountId: a, category: c);
+    }
+    if (state is OcrLoading) {
+      return OcrLoading(
+          selectedImagePath: state.selectedImagePath, accountId: a, category: c);
+    }
+    return OcrInitial(
+        selectedImagePath: state.selectedImagePath, accountId: a, category: c);
   }
 }

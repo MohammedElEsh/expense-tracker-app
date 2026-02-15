@@ -1,21 +1,24 @@
-// ✅ Recurring Expense Dialog - Using API Service
+// ✅ Recurring Expense Dialog - UI depends only on Cubit and domain entity
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/constants/category_constants.dart'
     show CategoryType;
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurrence_type.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/utils/recurring_expense_display_helper.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/presentation/utils/account_type_display.dart';
 
 class RecurringExpenseDialog extends StatefulWidget {
-  final RecurringExpense? recurringExpense;
+  final RecurringExpenseEntity? recurringExpense;
 
   const RecurringExpenseDialog({super.key, this.recurringExpense});
 
@@ -52,10 +55,9 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Set default category based on app mode if not already set
     if (_category.isEmpty && widget.recurringExpense == null) {
       final settings = context.read<SettingsCubit>().state;
-      final isBusinessMode = settings.appMode == AppMode.business;
+      final isBusinessMode = settings.isBusinessMode;
       _category = Categories.getDefaultCategoryForType(
         isBusinessMode,
         CategoryType.recurringExpense,
@@ -63,7 +65,7 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
     }
   }
 
-  void _initializeWithRecurringExpense(RecurringExpense expense) {
+  void _initializeWithRecurringExpense(RecurringExpenseEntity expense) {
     _amountController.text = expense.amount.toString();
     _notesController.text = expense.notes;
     _category = expense.category;
@@ -100,10 +102,10 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
 
     try {
       final settings = context.read<SettingsCubit>().state;
-
       final isEditing = widget.recurringExpense != null;
+      final now = DateTime.now();
 
-      final recurringExpense = RecurringExpense(
+      final entity = RecurringExpenseEntity(
         id: widget.recurringExpense?.id ?? '',
         accountId: _selectedAccountId!,
         amount: double.parse(_amountController.text),
@@ -116,23 +118,21 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
                 ? _dayOfMonth
                 : null,
         dayOfWeek: _recurrenceType == RecurrenceType.weekly ? _dayOfWeek : null,
-        appMode: settings.appMode,
+        appMode: settings.appMode.name,
         isActive: widget.recurringExpense?.isActive ?? true,
+        createdAt: widget.recurringExpense?.createdAt ?? now,
+        lastProcessed: widget.recurringExpense?.lastProcessed,
+        nextDue: widget.recurringExpense?.nextDue,
       );
 
-      // Use BLoC to add or update the expense
       if (isEditing) {
-        context.read<RecurringExpenseCubit>().updateRecurringExpense(
-          recurringExpense,
-        );
+        context.read<RecurringExpenseCubit>().updateRecurringExpense(entity);
       } else {
-        context.read<RecurringExpenseCubit>().addRecurringExpense(
-          recurringExpense,
-        );
+        context.read<RecurringExpenseCubit>().addRecurringExpense(entity);
       }
 
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(true);
+      if (mounted && context.canPop()) {
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -221,7 +221,7 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => context.pop(),
                           icon: Icon(
                             Icons.close,
                             color:
@@ -251,22 +251,25 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
                               ),
                             ),
                             items:
-                                accounts.map((Account account) {
-                                  return DropdownMenuItem<String>(
-                                    value: account.id,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          account.icon,
-                                          size: 20,
-                                          color: account.color,
+                                accounts
+                                    .map<DropdownMenuItem<String>>(
+                                        (AccountEntity account) {
+                                      return DropdownMenuItem<String>(
+                                        value: account.id,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              account.type.icon,
+                                              size: 20,
+                                              color: account.type.defaultColor,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Text(account.name),
+                                          ],
                                         ),
-                                        const SizedBox(width: 12),
-                                        Text(account.name),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
+                                      );
+                                    })
+                                    .toList(),
                             onChanged: (value) {
                               setState(() => _selectedAccountId = value);
                             },
@@ -364,11 +367,7 @@ class _RecurringExpenseDialogState extends State<RecurringExpenseDialog> {
                                 RecurrenceType.values.map((type) {
                                   return DropdownMenuItem(
                                     value: type,
-                                    child: Text(
-                                      isRTL
-                                          ? type.displayName
-                                          : type.englishName,
-                                    ),
+                                    child: Text(type.displayName(isRTL)),
                                   );
                                 }).toList(),
                             onChanged: (value) {

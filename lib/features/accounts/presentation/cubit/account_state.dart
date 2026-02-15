@@ -1,12 +1,11 @@
 import 'package:equatable/equatable.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
-
-// ✅ Clean Architecture - Cubit State
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_type.dart';
 
 class AccountState extends Equatable {
-  final List<Account> accounts;
-  final Account? defaultAccount; // Used only when creating new expenses
-  final Account? selectedAccount; // Used only for filtering in HomeScreen
+  final List<AccountEntity> accounts;
+  final AccountEntity? defaultAccount;
+  final AccountEntity? selectedAccount;
   final bool isLoading;
   final bool hasLoaded;
   final String? error;
@@ -31,9 +30,9 @@ class AccountState extends Equatable {
   ];
 
   AccountState copyWith({
-    List<Account>? accounts,
-    Account? defaultAccount,
-    Account? selectedAccount,
+    List<AccountEntity>? accounts,
+    AccountEntity? defaultAccount,
+    AccountEntity? selectedAccount,
     bool? isLoading,
     bool? hasLoaded,
     String? error,
@@ -55,8 +54,7 @@ class AccountState extends Equatable {
     );
   }
 
-  // Helper getters
-  List<Account> get activeAccounts =>
+  List<AccountEntity> get activeAccounts =>
       accounts.where((a) => a.isActive).toList();
 
   // حساب الإجماليات
@@ -79,12 +77,11 @@ class AccountState extends Equatable {
     return balances;
   }
 
-  List<Account> get lowBalanceAccounts {
+  List<AccountEntity> get lowBalanceAccounts {
     return activeAccounts.where((account) => account.isLowBalance).toList();
   }
 
-  // Helper methods
-  Account? getAccountById(String accountId) {
+  AccountEntity? getAccountById(String accountId) {
     try {
       return accounts.firstWhere((account) => account.id == accountId);
     } catch (e) {
@@ -92,7 +89,7 @@ class AccountState extends Equatable {
     }
   }
 
-  List<Account> getAccountsByType(AccountType type) {
+  List<AccountEntity> getAccountsByType(AccountType type) {
     return activeAccounts.where((account) => account.type == type).toList();
   }
 
@@ -119,8 +116,7 @@ class AccountState extends Equatable {
     return totalBalance / activeAccountsWithBalance.length;
   }
 
-  // Credit card specific helpers
-  List<Account> get creditCards => getAccountsByType(AccountType.credit);
+  List<AccountEntity> get creditCards => getAccountsByType(AccountType.credit);
 
   double get totalCreditLimit {
     return creditCards.fold(

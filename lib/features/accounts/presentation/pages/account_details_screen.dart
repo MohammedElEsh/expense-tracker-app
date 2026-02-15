@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
@@ -18,7 +18,7 @@ import 'package:expense_tracker/features/accounts/presentation/widgets/details/a
 // ✅ Clean Architecture - Account Details Screen (Refactored)
 
 class AccountDetailsScreen extends StatefulWidget {
-  final Account account;
+  final AccountEntity account;
 
   const AccountDetailsScreen({super.key, required this.account});
 

@@ -1,14 +1,14 @@
-// ✅ Clean Architecture - Recurring Expense Details Screen (Refactored)
+// ✅ Clean Architecture - Recurring Expense Details Screen (domain entity only)
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
-// Import Widgets
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_header_card.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_status_frequency_card.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/details/recurring_expense_schedule_card.dart';
@@ -16,7 +16,7 @@ import 'package:expense_tracker/features/recurring_expenses/presentation/widgets
 import 'package:expense_tracker/features/recurring_expenses/presentation/widgets/recurring_expense_dialog.dart';
 
 class RecurringExpenseDetailsScreen extends StatefulWidget {
-  final RecurringExpense recurringExpense;
+  final RecurringExpenseEntity recurringExpense;
 
   const RecurringExpenseDetailsScreen({
     super.key,
@@ -163,7 +163,7 @@ class _RecurringExpenseDetailsScreenState
     if (result == true && mounted) {
       // Pop back to list screen to see updated data
       // ignore: use_build_context_synchronously
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/presentation/utils/project_display_helper.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class ProjectHeaderCard extends StatelessWidget {
-  final Project project;
+  final ProjectEntity project;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -90,7 +91,7 @@ class ProjectHeaderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _getStatusLabel(project.status, isRTL),
+                  project.status.displayName(isRTL),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -166,7 +167,4 @@ class ProjectHeaderCard extends StatelessWidget {
     }
   }
 
-  String _getStatusLabel(ProjectStatus status, bool isRTL) {
-    return isRTL ? status.arabicName : status.englishName;
-  }
 }

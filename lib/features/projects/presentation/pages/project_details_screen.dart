@@ -1,11 +1,11 @@
-// ✅ Refactored Project Details Screen - Clean & Modular
+// ✅ Project Details Screen - Uses ProjectCubit only (no service/API access).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_report_entity.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
@@ -14,7 +14,6 @@ import 'package:expense_tracker/features/settings/presentation/cubit/settings_st
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
 
-// Import refactored widgets
 import 'package:expense_tracker/features/projects/presentation/widgets/details/project_header_card.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/details/project_progress_card.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/details/project_statistics_section.dart';
@@ -22,7 +21,7 @@ import 'package:expense_tracker/features/projects/presentation/widgets/details/p
 import 'package:expense_tracker/features/projects/presentation/widgets/details/project_expenses_section.dart';
 
 class ProjectDetailsScreen extends StatefulWidget {
-  final Project project;
+  final ProjectEntity project;
 
   const ProjectDetailsScreen({super.key, required this.project});
 
@@ -36,13 +35,9 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Current project (can be updated after edit)
-  late Project _currentProject;
-  ProjectReport? _projectReport;
+  late ProjectEntity _currentProject;
+  ProjectReportEntity? _projectReport;
   bool _isLoadingReport = false;
-
-  // API Service
-  ProjectApiService get _projectService => serviceLocator.projectService;
 
   @override
   void initState() {
@@ -80,7 +75,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
   Future<void> _loadProjectReport() async {
     try {
       setState(() => _isLoadingReport = true);
-      final report = await _projectService.getProjectReport(_currentProject.id);
+      final report = await context.read<ProjectCubit>().getProjectReport(_currentProject.id);
       if (mounted) {
         setState(() {
           _projectReport = report;
@@ -97,7 +92,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
 
   Future<void> _refreshProject() async {
     try {
-      final project = await _projectService.getProjectById(_currentProject.id);
+      final project = await context.read<ProjectCubit>().getProjectById(_currentProject.id);
       if (project != null && mounted) {
         setState(() => _currentProject = project);
         await _loadProjectReport();
@@ -160,13 +155,11 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
                 position: _slideAnimation,
                 child: BlocBuilder<ExpenseCubit, ExpenseState>(
                   builder: (context, expenseState) {
-                    // Use expenses from report if available, otherwise get from ExpenseCubit
                     final projectExpenses =
-                        _projectReport?.expenseObjects.isNotEmpty == true
-                            ? _projectReport!.expenseObjects
+                        _projectReport != null && _projectReport!.expenses.isNotEmpty
+                            ? _expensesFromReport(_projectReport!)
                             : _getProjectExpenses(expenseState);
 
-                    // Use report data if available, fallback to calculated values
                     final totalExpenses =
                         _projectReport?.totalExpenses ??
                         _getTotalExpenses(projectExpenses);
@@ -175,7 +168,6 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
                     );
                     final expenseCount =
                         _projectReport?.expenseCount ?? projectExpenses.length;
-                    // Use progress from report if available, otherwise calculate from dates
                     final progressPercentage =
                         _projectReport?.progress ?? _getProgressPercentage();
 
@@ -258,7 +250,18 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen>
     );
   }
 
-  // ============= Helper Methods =============
+  List<Expense> _expensesFromReport(ProjectReportEntity report) {
+    try {
+      final list = report.expenses
+          .map((e) => Expense.fromApiJson(e))
+          .toList();
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    } catch (e) {
+      debugPrint('Error converting report expenses: $e');
+      return [];
+    }
+  }
 
   List<Expense> _getProjectExpenses(ExpenseState expenseState) {
     if (expenseState.expenses.isNotEmpty) {

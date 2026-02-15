@@ -1,11 +1,10 @@
-// ✅ Clean Architecture - Company Card Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/companies/data/models/company.dart';
+import 'package:expense_tracker/features/companies/domain/entities/company_entity.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class CompanyCard extends StatelessWidget {
-  final Company company;
+  final CompanyEntity company;
   final bool isRTL;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -36,10 +35,8 @@ class CompanyCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
               Row(
                 children: [
-                  // Status Indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.xs,
@@ -80,8 +77,6 @@ class CompanyCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-
-                  // Menu Button
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit') {
@@ -90,36 +85,18 @@ class CompanyCard extends StatelessWidget {
                         onDelete();
                       }
                     },
-                    itemBuilder:
-                        (context) => [
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.edit, size: 18),
-                                const SizedBox(width: AppSpacing.xs),
-                                Text(isRTL ? 'تعديل' : 'Edit'),
-                              ],
-                            ),
-                          ),
-                          // PopupMenuItem(
-                          //   value: 'delete',
-                          //   child: Row(
-                          //     children: [
-                          //       const Icon(
-                          //         Icons.delete,
-                          //         color: AppColors.error,
-                          //         size: 18,
-                          //       ),
-                          //       const SizedBox(width: AppSpacing.xs),
-                          //       Text(
-                          //         isRTL ? 'حذف' : 'Delete',
-                          //         style: const TextStyle(color: AppColors.error),
-                          //       ),
-                          //     ],
-                          //   ),
-                          // ),
-                        ],
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit, size: 18),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(isRTL ? 'تعديل' : 'Edit'),
+                          ],
+                        ),
+                      ),
+                    ],
                     child: Icon(
                       Icons.more_vert,
                       color: context.iconColor,
@@ -128,10 +105,7 @@ class CompanyCard extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: AppSpacing.sm),
-
-              // Company Name
               Text(
                 company.name,
                 style: AppTypography.headlineMedium.copyWith(
@@ -139,19 +113,14 @@ class CompanyCard extends StatelessWidget {
                   color: context.primaryTextColor,
                 ),
               ),
-
               const SizedBox(height: AppSpacing.sm),
-
-              // Company Details
               _buildDetailRow(
                 context,
                 Icons.attach_money,
                 isRTL ? 'العملة' : 'Currency',
                 company.currency,
               ),
-
-              if (company.taxNumber != null &&
-                  company.taxNumber!.isNotEmpty) ...[
+              if (company.taxNumber != null && company.taxNumber!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
                   context,
@@ -160,7 +129,6 @@ class CompanyCard extends StatelessWidget {
                   company.taxNumber!,
                 ),
               ],
-
               if (company.phone != null && company.phone!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
@@ -170,7 +138,6 @@ class CompanyCard extends StatelessWidget {
                   company.phone!,
                 ),
               ],
-
               if (company.address != null && company.address!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xs),
                 _buildDetailRow(
@@ -180,10 +147,7 @@ class CompanyCard extends StatelessWidget {
                   company.address!,
                 ),
               ],
-
               const SizedBox(height: AppSpacing.sm),
-
-              // Employee Count
               Row(
                 children: [
                   Icon(
@@ -209,10 +173,7 @@ class CompanyCard extends StatelessWidget {
                     ),
                 ],
               ),
-
               const SizedBox(height: AppSpacing.xs),
-
-              // Fiscal Year
               Row(
                 children: [
                   Icon(

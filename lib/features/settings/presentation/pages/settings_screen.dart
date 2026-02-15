@@ -57,7 +57,7 @@ class SettingsScreen extends StatelessWidget {
           return BlocBuilder<UserCubit, UserState>(
             builder: (context, userState) {
               final isRTL = settings.language == 'ar';
-              final currentUser = userState.currentUser;
+              final currentUser = userState is UserLoaded ? userState.currentUser : null;
               final isDesktop = context.isDesktop;
 
               return Directionality(

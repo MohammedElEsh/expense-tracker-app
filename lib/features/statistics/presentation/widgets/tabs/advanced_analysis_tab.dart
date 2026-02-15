@@ -1,26 +1,39 @@
-// ✅ Advanced Analysis Tab - Extracted from Enhanced Statistics Screen
+// Advanced Analysis Tab: data from StatisticsCubit state only.
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/statistics/domain/entities/statistics_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class AdvancedAnalysisTab extends StatelessWidget {
-  final ExpenseState expenseState;
+  final StatisticsEntity? statistics;
   final SettingsState settings;
   final bool isRTL;
 
   const AdvancedAnalysisTab({
     super.key,
-    required this.expenseState,
+    required this.statistics,
     required this.settings,
     required this.isRTL,
   });
 
   @override
   Widget build(BuildContext context) {
-    final expenses = expenseState.allExpenses;
+    final totalAmount = statistics?.totalAmount ?? 0.0;
+    final totalExpenses = statistics?.expenseCount ?? 0;
+    final categoryTotal = Map<String, double>.from(
+      statistics?.categoryTotals ?? {},
+    );
+    final sortedCategories =
+        categoryTotal.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+    final topCategory =
+        sortedCategories.isNotEmpty ? sortedCategories.first.key : '';
+    final dailyAverage = totalAmount / 30; // approximate
+    final maxExpense = sortedCategories.isNotEmpty
+        ? sortedCategories.map((e) => e.value).reduce((a, b) => a > b ? a : b)
+        : 0.0;
 
-    if (expenses.isEmpty) {
+    if (totalExpenses == 0) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -35,47 +48,6 @@ class AdvancedAnalysisTab extends StatelessWidget {
         ),
       );
     }
-
-    // Calculate statistics
-    final totalExpenses = expenses.length;
-    final totalAmount = expenses.fold<double>(
-      0.0,
-      (sum, expense) => sum + expense.amount,
-    );
-    // final averageExpense = totalAmount / totalExpenses;
-
-    // Find max and min
-    final amounts = expenses.map((e) => e.amount).toList();
-    amounts.sort();
-    final maxExpense = amounts.last;
-    // final minExpense = amounts.first;
-
-    // Category analysis
-    final Map<String, int> categoryCount = {};
-    final Map<String, double> categoryTotal = {};
-
-    for (final expense in expenses) {
-      categoryCount[expense.category] =
-          (categoryCount[expense.category] ?? 0) + 1;
-      categoryTotal[expense.category] =
-          (categoryTotal[expense.category] ?? 0) + expense.amount;
-    }
-
-    // Sort categories by total amount
-    final sortedCategories =
-        categoryTotal.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-    // Calculate daily average
-    final daysDiff =
-        expenses.isNotEmpty
-            ? DateTime.now().difference(expenses.first.date).inDays + 1
-            : 1;
-    final dailyAverage = totalAmount / daysDiff;
-
-    // Get top spending category
-    final topCategory =
-        sortedCategories.isNotEmpty ? sortedCategories.first.key : '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -136,8 +108,7 @@ class AdvancedAnalysisTab extends StatelessWidget {
           ...sortedCategories.take(5).map((entry) {
             final category = entry.key;
             final total = entry.value;
-            final count = categoryCount[category] ?? 0;
-            final percentage = (total / totalAmount * 100);
+            final percentage = totalAmount > 0 ? (total / totalAmount * 100) : 0.0;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -154,7 +125,7 @@ class AdvancedAnalysisTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    Text('$count ${isRTL ? 'مصروف' : 'expenses'}'),
+                    Text('${percentage.toStringAsFixed(1)}% ${isRTL ? 'من الإجمالي' : 'of total'}'),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
                       value: percentage / 100,

@@ -1,5 +1,7 @@
 // ✅ Refactored Budget Management Screen - Clean & Modular
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 import 'package:expense_tracker/core/theme/app_theme.dart';
@@ -16,9 +18,7 @@ import 'package:expense_tracker/features/budgets/presentation/widgets/budget_mon
 import 'package:expense_tracker/features/budgets/presentation/widgets/budget_summary_card.dart';
 import 'package:expense_tracker/features/budgets/presentation/widgets/budget_category_card.dart';
 import 'package:expense_tracker/features/budgets/presentation/widgets/budget_add_dialog.dart';
-import 'package:expense_tracker/features/budgets/presentation/pages/budget_details_screen.dart';
 import 'package:expense_tracker/features/budgets/utils/budget_calculations.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 
 class BudgetManagementScreen extends StatefulWidget {
   const BudgetManagementScreen({super.key});
@@ -278,12 +278,7 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
   }
 
   void _navigateToBudgetDetails(Budget budget, double spent) {
-    Navigator.push(
-      context,
-      AnimatedPageRoute(
-        child: BudgetDetailsScreen(budget: budget, spent: spent),
-      ),
-    );
+    context.push(AppRoutes.budgetDetails, extra: {'budget': budget, 'spent': spent});
   }
 
   void _deleteBudget(Budget budget) {
@@ -322,7 +317,7 @@ class _BudgetManagementScreenState extends State<BudgetManagementScreen> {
                 month: budget.month,
                 year: budget.year,
               );
-              Navigator.of(dialogContext).pop();
+              dialogContext.pop();
             },
           ),
     );

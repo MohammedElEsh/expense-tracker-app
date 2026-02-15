@@ -3,9 +3,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
+import 'package:expense_tracker/core/di/injection.dart';
+import 'package:expense_tracker/features/accounts/data/datasources/account_service.dart';
+import 'package:expense_tracker/features/budgets/data/datasources/budget_service.dart';
+import 'package:expense_tracker/features/companies/domain/repositories/company_repository.dart';
+import 'package:expense_tracker/features/expenses/data/datasources/expense_api_service.dart';
+import 'package:expense_tracker/features/projects/domain/repositories/project_repository.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/repositories/recurring_expense_repository.dart';
+import 'package:expense_tracker/features/vendors/domain/repositories/vendor_repository.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
 
 /// Central manager for handling user context changes
 /// Clears all state when user or role changes to ensure data isolation
@@ -69,26 +76,16 @@ class UserContextManager {
     try {
       debugPrint('🗑️ Clearing all service caches...');
 
-      // Clear AccountService cache
-      serviceLocator.accountService.clearCache();
+      getIt<AccountService>().clearCache();
+      getIt<BudgetService>().clearCache();
+      getIt<ExpenseApiService>().clearCache();
 
-      // Clear BudgetService cache
-      serviceLocator.budgetService.clearCache();
+      // Clear project cache (via repository)
+      getIt<ProjectRepository>().clearCache();
 
-      // Clear ExpenseApiService cache
-      serviceLocator.expenseApiService.clearCache();
-
-      // Clear ProjectApiService cache
-      serviceLocator.projectService.clearCache();
-
-      // Clear RecurringExpenseApiService cache
-      serviceLocator.recurringExpenseService.clearCache();
-
-      // Clear VendorService cache
-      serviceLocator.vendorService.clearCache();
-
-      // Clear CompanyApiService cache
-      serviceLocator.companyService.clearCache();
+      getIt<RecurringExpenseRepository>().clearCache();
+      getIt<CompanyRepository>().clearCache();
+      getIt<VendorRepository>().clearCache();
 
       debugPrint('✅ All service caches cleared');
     } catch (e) {

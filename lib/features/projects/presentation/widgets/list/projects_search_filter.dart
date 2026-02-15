@@ -1,7 +1,8 @@
 // Projects - Search and Filter Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/utils/project_display_helper.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
@@ -76,7 +77,7 @@ class ProjectsSearchFilter extends StatelessWidget {
                       (status) => Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: _buildFilterChip(
-                          label: status.getDisplayName(isRTL),
+                          label: status.displayName(isRTL),
                           isSelected: selectedStatus == status,
                           onTap: () => onStatusChanged(status),
                           settings: settings,

@@ -1,15 +1,14 @@
 // ✅ OCR Feature - Presentation Layer - OCR Scanner Screen
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
+import 'package:expense_tracker/core/di/injection.dart';
+import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/features/ocr/presentation/cubit/ocr_cubit.dart';
 import 'package:expense_tracker/features/ocr/presentation/cubit/ocr_state.dart';
-import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
-import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
-
+import 'package:expense_tracker/features/ocr/presentation/utils/ocr_result_to_expense_mapper.dart';
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_header_section.dart';
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_image_placeholder.dart';
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_image_preview.dart';
@@ -18,6 +17,15 @@ import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_category_s
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_action_buttons.dart';
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_loading_indicator.dart';
 import 'package:expense_tracker/features/ocr/presentation/widgets/ocr_scanned_results_preview.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart' as project_data;
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_state.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
 
 class OCRScannerScreen extends StatelessWidget {
   const OCRScannerScreen({super.key});
@@ -25,7 +33,7 @@ class OCRScannerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => OcrCubit(),
+      create: (context) => getIt<OcrCubit>(),
       child: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, settings) {
           final isRTL = settings.language == 'ar';
@@ -49,7 +57,7 @@ class OCRScannerScreen extends StatelessWidget {
               ),
               body: BlocConsumer<OcrCubit, OcrState>(
                 listener: (context, state) {
-                  _handleOcrStateChanges(context, state, isRTL);
+                  _handleOcrStateChanges(context, state, isRTL, settings);
                 },
                 builder: (context, ocrState) {
                   return _OcrScannerBody(
@@ -70,10 +78,17 @@ class OCRScannerScreen extends StatelessWidget {
     BuildContext context,
     OcrState state,
     bool isRTL,
+    SettingsState settings,
   ) {
     // Handle success - navigate to expense form with pre-filled data
-    if (state.isSuccess && state.scannedExpense != null) {
-      final expense = state.scannedExpense!;
+    if (state.isSuccess && state.result != null) {
+      final expense = mapOcrResultToExpense(
+        state.result!,
+        accountId: state.accountId,
+        category: state.category,
+        appMode: settings.appMode,
+        photoPath: state.selectedImagePath,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -96,9 +111,49 @@ class OCRScannerScreen extends StatelessWidget {
         ),
       );
 
-      Navigator.of(context).pushWithAnimation(
-        AddExpenseDialog(selectedDate: expense.date, expenseToEdit: expense),
-        animationType: AnimationType.slideUp,
+      final projectCubit = context.read<ProjectCubit>();
+      final vendorCubit = context.read<VendorCubit>();
+      final projectState = projectCubit.state;
+      final projectEntities = projectState is ProjectLoaded
+          ? projectState.projects
+              .where((p) =>
+                  p.status != ProjectStatus.cancelled &&
+                  p.status != ProjectStatus.completed)
+              .toList()
+          : <ProjectEntity>[];
+      final projects = projectEntities
+          .map((p) => project_data.Project(
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                status: project_data.ProjectStatus.values.firstWhere(
+                  (s) => s.name == p.status.name,
+                  orElse: () => project_data.ProjectStatus.planning,
+                ),
+                startDate: p.startDate,
+                endDate: p.endDate,
+                budget: p.budget,
+                spentAmount: p.spentAmount,
+                managerName: p.managerName,
+                clientName: p.clientName,
+                priority: p.priority,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt,
+              ))
+          .toList();
+      final vendorState = vendorCubit.state;
+      final vendorNames = vendorState is VendorLoaded
+          ? vendorState.vendors.map((v) => v.name).toList()
+          : <String>[];
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AddExpenseDialog.createWithCubit(
+          ctx,
+          selectedDate: expense.date,
+          expenseToEdit: expense,
+          projects: projects,
+          vendorNames: vendorNames,
+        ),
       );
 
       context.read<OcrCubit>().resetOcrState();
@@ -173,9 +228,9 @@ class _OcrScannerBody extends StatelessWidget {
                 OcrHeaderSection(settings: settings, isRTL: isRTL),
                 const SizedBox(height: 24),
 
-                if (ocrState.selectedImage != null)
+                if (ocrState.selectedImagePath != null)
                   OcrImagePreview(
-                    imageFile: ocrState.selectedImage!,
+                    imageFile: File(ocrState.selectedImagePath!),
                     settings: settings,
                     onClearImage: () => context.read<OcrCubit>().clearImage(),
                   )
@@ -207,7 +262,7 @@ class _OcrScannerBody extends StatelessWidget {
                 OcrActionButtons(
                   settings: settings,
                   isRTL: isRTL,
-                  hasImage: ocrState.selectedImage != null,
+                  hasImage: ocrState.selectedImagePath != null,
                   isScanning: ocrState.isScanning,
                   canScan: ocrState.canScan,
                   onPickCamera:
@@ -223,9 +278,14 @@ class _OcrScannerBody extends StatelessWidget {
                 if (ocrState.isScanning)
                   OcrLoadingIndicator(settings: settings, isRTL: isRTL),
 
-                if (ocrState.scannedExpense != null && !ocrState.isScanning)
+                if (ocrState.result != null && !ocrState.isScanning)
                   OcrScannedResultsPreview(
-                    expense: ocrState.scannedExpense!,
+                    expense: mapOcrResultToExpense(
+                      ocrState.result!,
+                      accountId: ocrState.accountId,
+                      category: ocrState.category,
+                      appMode: settings.appMode,
+                    ),
                     settings: settings,
                     isRTL: isRTL,
                   ),

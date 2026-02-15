@@ -1,229 +1,172 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/accounts/data/datasources/account_service.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/add_to_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/create_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/delete_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/get_accounts_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/get_default_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/initialize_accounts_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/set_default_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/subtract_from_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/transfer_money_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/update_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/update_account_usecase.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 
-// =============================================================================
-// ACCOUNT CUBIT - Clean Architecture Presentation Layer
-// =============================================================================
-
-/// Cubit for managing account state
-/// Uses API-based AccountService for all operations
-/// No Firebase dependencies
 class AccountCubit extends Cubit<AccountState> {
-  final AccountService _accountService;
+  AccountCubit({
+    required GetAccountsUseCase getAccountsUseCase,
+    required CreateAccountUseCase createAccountUseCase,
+    required UpdateAccountUseCase updateAccountUseCase,
+    required DeleteAccountUseCase deleteAccountUseCase,
+    required GetDefaultAccountUseCase getDefaultAccountUseCase,
+    required SetDefaultAccountUseCase setDefaultAccountUseCase,
+    required InitializeAccountsUseCase initializeAccountsUseCase,
+    required UpdateAccountBalanceUseCase updateAccountBalanceUseCase,
+    required AddToAccountBalanceUseCase addToAccountBalanceUseCase,
+    required SubtractFromAccountBalanceUseCase subtractFromAccountBalanceUseCase,
+    required TransferMoneyUseCase transferMoneyUseCase,
+  })  : _getAccounts = getAccountsUseCase,
+        _createAccount = createAccountUseCase,
+        _updateAccount = updateAccountUseCase,
+        _deleteAccount = deleteAccountUseCase,
+        _getDefaultAccount = getDefaultAccountUseCase,
+        _setDefaultAccount = setDefaultAccountUseCase,
+        _initializeAccounts = initializeAccountsUseCase,
+        _updateAccountBalance = updateAccountBalanceUseCase,
+        _addToAccountBalance = addToAccountBalanceUseCase,
+        _subtractFromAccountBalance = subtractFromAccountBalanceUseCase,
+        _transferMoney = transferMoneyUseCase,
+        super(const AccountState());
 
-  AccountCubit({AccountService? accountService})
-    : _accountService = accountService ?? serviceLocator.accountService,
-      super(const AccountState());
+  final GetAccountsUseCase _getAccounts;
+  final CreateAccountUseCase _createAccount;
+  final UpdateAccountUseCase _updateAccount;
+  final DeleteAccountUseCase _deleteAccount;
+  final GetDefaultAccountUseCase _getDefaultAccount;
+  final SetDefaultAccountUseCase _setDefaultAccount;
+  final InitializeAccountsUseCase _initializeAccounts;
+  final UpdateAccountBalanceUseCase _updateAccountBalance;
+  final AddToAccountBalanceUseCase _addToAccountBalance;
+  final SubtractFromAccountBalanceUseCase _subtractFromAccountBalance;
+  final TransferMoneyUseCase _transferMoney;
 
   Future<void> initializeAccounts() async {
-    // Guard: Skip if already loading or already loaded with data
-    if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) {
-      debugPrint(
-        '⏭️ Skipping InitializeAccounts - isLoading: ${state.isLoading}, hasLoaded: ${state.hasLoaded}, accounts: ${state.accounts.length}',
-      );
-      return;
-    }
+    if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) return;
 
-    // Clear state immediately when initializing (for context changes)
-    emit(
-      state.copyWith(
-        accounts: const [],
-        defaultAccount: null,
-        selectedAccount:
-            null, // Clear selected account (filtering) - not auto-set
-        isLoading: true,
-        clearError: true,
-      ),
-    );
+    emit(state.copyWith(
+      accounts: const [],
+      defaultAccount: null,
+      selectedAccount: null,
+      isLoading: true,
+      clearError: true,
+    ));
 
     try {
-      // Load accounts first
-      final accounts = await _accountService.loadAccounts();
-
-      // Initialize default account if needed
+      final accounts = await _getAccounts();
       if (accounts.isEmpty) {
-        await _accountService.initializeDefaultAccounts();
-        // Reload accounts after initialization
-        final newAccounts = await _accountService.loadAccounts();
-        emit(
-          state.copyWith(
-            accounts: newAccounts,
-            isLoading: false,
-            hasLoaded: true,
-          ),
-        );
+        await _initializeAccounts();
+        final newAccounts = await _getAccounts();
+        emit(state.copyWith(accounts: newAccounts, isLoading: false, hasLoaded: true));
       } else {
-        emit(
-          state.copyWith(accounts: accounts, isLoading: false, hasLoaded: true),
-        );
+        emit(state.copyWith(accounts: accounts, isLoading: false, hasLoaded: true));
       }
-
-      // Load default account
       loadDefaultAccount();
     } catch (error) {
       debugPrint('❌ Error initializing accounts: $error');
-      emit(
-        state.copyWith(
-          accounts: const [],
-          defaultAccount: null,
-          selectedAccount: null,
-          isLoading: false,
-          error: 'خطأ في تهيئة الحسابات: $error',
-        ),
-      );
+      emit(state.copyWith(
+        accounts: const [],
+        defaultAccount: null,
+        selectedAccount: null,
+        isLoading: false,
+        error: 'خطأ في تهيئة الحسابات: $error',
+      ));
     }
   }
 
   Future<void> loadAccounts() async {
-    // Guard: Skip if already loading or already loaded with data
-    if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) {
-      debugPrint(
-        '⏭️ Skipping LoadAccounts - isLoading: ${state.isLoading}, hasLoaded: ${state.hasLoaded}, accounts: ${state.accounts.length}',
-      );
-      return;
-    }
+    if (state.isLoading || (state.hasLoaded && state.accounts.isNotEmpty)) return;
 
-    // Clear state immediately when loading starts (for context changes)
-    emit(
-      state.copyWith(
-        accounts: const [],
-        defaultAccount: null,
-        selectedAccount:
-            null, // Clear selected account (filtering) - not auto-set
-        isLoading: true,
-        clearError: true,
-      ),
-    );
+    emit(state.copyWith(
+      accounts: const [],
+      defaultAccount: null,
+      selectedAccount: null,
+      isLoading: true,
+      clearError: true,
+    ));
 
     try {
-      final accounts = await _accountService.loadAccounts();
-      debugPrint('🔄 Loaded ${accounts.length} accounts from API');
-
-      // Create new list to ensure UI update
-      final freshAccounts = List<Account>.from(accounts);
-
-      emit(
-        state.copyWith(
-          accounts: freshAccounts,
-          isLoading: false,
-          hasLoaded: true,
-        ),
-      );
-      debugPrint(
-        '✅ AccountState updated - account count: ${freshAccounts.length}',
-      );
+      final accounts = await _getAccounts();
+      emit(state.copyWith(accounts: accounts, isLoading: false, hasLoaded: true));
     } catch (error) {
       debugPrint('❌ Error loading accounts: $error');
-      emit(
-        state.copyWith(
-          accounts: const [],
-          isLoading: false,
-          error: 'خطأ في تحميل الحسابات: $error',
-        ),
-      );
+      emit(state.copyWith(
+        accounts: const [],
+        isLoading: false,
+        error: 'خطأ في تحميل الحسابات: $error',
+      ));
     }
   }
 
   Future<void> loadDefaultAccount() async {
     try {
-      // Load default account for expense creation (NOT for filtering)
-      final defaultAccount = await _accountService.getDefaultAccount();
+      final defaultAccount = await _getDefaultAccount();
       emit(state.copyWith(defaultAccount: defaultAccount));
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في تحميل الحساب الافتراضي: $error'));
     }
   }
 
-  Future<void> addAccount(Account account) async {
+  Future<void> addAccount(AccountEntity account) async {
     emit(state.copyWith(isLoading: true, clearError: true));
-
     try {
-      await _accountService.addAccount(account);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
+      await _createAccount(account);
+      final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts, isLoading: false));
-
-      // If this is the first account, make it default (for expense creation)
-      if (state.defaultAccount == null) {
-        setDefaultAccount(account.id);
-      }
+      if (state.defaultAccount == null) setDefaultAccount(account.id);
     } catch (error) {
-      emit(
-        state.copyWith(isLoading: false, error: 'خطأ في إضافة الحساب: $error'),
-      );
+      emit(state.copyWith(isLoading: false, error: 'خطأ في إضافة الحساب: $error'));
     }
   }
 
-  Future<void> updateAccount(Account account) async {
+  Future<void> updateAccount(AccountEntity account) async {
     emit(state.copyWith(isLoading: true, clearError: true));
-
     try {
-      await _accountService.updateAccount(account);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
-
-      // Update both defaultAccount and selectedAccount if they match the updated account
-      Account? updatedDefaultAccount =
-          state.defaultAccount?.id == account.id
-              ? account
-              : state.defaultAccount;
-      Account? updatedSelectedAccount =
-          state.selectedAccount?.id == account.id
-              ? account
-              : state.selectedAccount;
-
-      emit(
-        state.copyWith(
-          accounts: accounts,
-          isLoading: false,
-          defaultAccount: updatedDefaultAccount,
-          selectedAccount: updatedSelectedAccount,
-        ),
-      );
+      await _updateAccount(account);
+      final accounts = await _getAccounts();
+      AccountEntity? updatedDefaultAccount =
+          state.defaultAccount?.id == account.id ? account : state.defaultAccount;
+      AccountEntity? updatedSelectedAccount =
+          state.selectedAccount?.id == account.id ? account : state.selectedAccount;
+      emit(state.copyWith(
+        accounts: accounts,
+        isLoading: false,
+        defaultAccount: updatedDefaultAccount,
+        selectedAccount: updatedSelectedAccount,
+      ));
     } catch (error) {
-      emit(
-        state.copyWith(isLoading: false, error: 'خطأ في تحديث الحساب: $error'),
-      );
+      emit(state.copyWith(isLoading: false, error: 'خطأ في تحديث الحساب: $error'));
     }
   }
 
   Future<void> deleteAccount(String accountId) async {
     emit(state.copyWith(isLoading: true, clearError: true));
-
     try {
-      await _accountService.deleteAccount(accountId);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
+      await _deleteAccount(accountId);
+      final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts, isLoading: false));
-
-      // If deleted account was default, reload default account
-      if (state.defaultAccount?.id == accountId) {
-        loadDefaultAccount();
-      }
+      if (state.defaultAccount?.id == accountId) loadDefaultAccount();
     } catch (error) {
-      emit(
-        state.copyWith(isLoading: false, error: 'خطأ في حذف الحساب: $error'),
-      );
+      emit(state.copyWith(isLoading: false, error: 'خطأ في حذف الحساب: $error'));
     }
   }
 
   Future<void> setDefaultAccount(String accountId) async {
     try {
-      // Set default account for expense creation (NOT for filtering)
-      await _accountService.setDefaultAccount(accountId);
-
-      // Update default account in state
+      await _setDefaultAccount(accountId);
       final account = state.getAccountById(accountId);
-      if (account != null) {
-        emit(state.copyWith(defaultAccount: account));
-      }
+      if (account != null) emit(state.copyWith(defaultAccount: account));
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في تعيين الحساب الافتراضي: $error'));
     }
@@ -231,10 +174,8 @@ class AccountCubit extends Cubit<AccountState> {
 
   Future<void> updateAccountBalance(String accountId, double newBalance) async {
     try {
-      await _accountService.updateAccountBalance(accountId, newBalance);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
+      await _updateAccountBalance(accountId, newBalance);
+      final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts));
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في تحديث رصيد الحساب: $error'));
@@ -243,25 +184,18 @@ class AccountCubit extends Cubit<AccountState> {
 
   Future<void> addToAccountBalance(String accountId, double amount) async {
     try {
-      await _accountService.addToAccountBalance(accountId, amount);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
+      await _addToAccountBalance(accountId, amount);
+      final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts));
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في إضافة مبلغ للحساب: $error'));
     }
   }
 
-  Future<void> subtractFromAccountBalance(
-    String accountId,
-    double amount,
-  ) async {
+  Future<void> subtractFromAccountBalance(String accountId, double amount) async {
     try {
-      await _accountService.subtractFromAccountBalance(accountId, amount);
-
-      // Reload accounts directly
-      final accounts = await _accountService.loadAccounts();
+      await _subtractFromAccountBalance(accountId, amount);
+      final accounts = await _getAccounts();
       emit(state.copyWith(accounts: accounts));
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في خصم مبلغ من الحساب: $error'));
@@ -275,26 +209,21 @@ class AccountCubit extends Cubit<AccountState> {
     required String description,
   }) async {
     emit(state.copyWith(isLoading: true, clearError: true));
-
     try {
-      final success = await _accountService.transferMoney(
+      final success = await _transferMoney(
         fromAccountId: fromAccountId,
         toAccountId: toAccountId,
         amount: amount,
         notes: description,
       );
-
       if (success) {
-        // Reload accounts directly
-        final accounts = await _accountService.loadAccounts();
+        final accounts = await _getAccounts();
         emit(state.copyWith(accounts: accounts, isLoading: false));
       } else {
         emit(state.copyWith(isLoading: false, error: 'فشل في تحويل الأموال'));
       }
     } catch (error) {
-      emit(
-        state.copyWith(isLoading: false, error: 'خطأ في تحويل الأموال: $error'),
-      );
+      emit(state.copyWith(isLoading: false, error: 'خطأ في تحويل الأموال: $error'));
     }
   }
 
@@ -302,11 +231,8 @@ class AccountCubit extends Cubit<AccountState> {
     try {
       final account = state.getAccountById(accountId);
       if (account != null) {
-        final updatedAccount = account.copyWith(isActive: isActive);
-        await _accountService.updateAccount(updatedAccount);
-
-        // Reload accounts directly
-        final accounts = await _accountService.loadAccounts();
+        await _updateAccount(account.copyWith(isActive: isActive));
+        final accounts = await _getAccounts();
         emit(state.copyWith(accounts: accounts));
       }
     } catch (error) {
@@ -314,22 +240,20 @@ class AccountCubit extends Cubit<AccountState> {
     }
   }
 
-  Future<void> toggleIncludeInTotal(
-    String accountId,
-    bool includeInTotal,
-  ) async {
+  Future<void> toggleIncludeInTotal(String accountId, bool includeInTotal) async {
     try {
       final account = state.getAccountById(accountId);
       if (account != null) {
-        final updatedAccount = account.copyWith(includeInTotal: includeInTotal);
-        await _accountService.updateAccount(updatedAccount);
-
-        // Reload accounts directly
-        final accounts = await _accountService.loadAccounts();
+        await _updateAccount(account.copyWith(includeInTotal: includeInTotal));
+        final accounts = await _getAccounts();
         emit(state.copyWith(accounts: accounts));
       }
     } catch (error) {
       emit(state.copyWith(error: 'خطأ في تغيير إعداد الحساب: $error'));
     }
+  }
+
+  void setSelectedAccount(AccountEntity? account) {
+    emit(state.copyWith(selectedAccount: account));
   }
 }

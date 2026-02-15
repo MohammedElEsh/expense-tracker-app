@@ -1,11 +1,10 @@
-// Recurring Expense Details - Expense Details Card Widget
+// Recurring Expense Details - Expense Details Card (domain entity only)
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class RecurringExpenseDetailsCard extends StatelessWidget {
-  final RecurringExpense recurringExpense;
+  final RecurringExpenseEntity recurringExpense;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -82,7 +81,7 @@ class RecurringExpenseDetailsCard extends StatelessWidget {
           _buildInfoRow(
             Icons.business,
             isRTL ? 'نوع الوضع' : 'App Mode',
-            recurringExpense.appMode == AppMode.personal
+            recurringExpense.appMode == 'personal'
                 ? (isRTL ? 'شخصي' : 'Personal')
                 : (isRTL ? 'تجاري' : 'Business'),
           ),

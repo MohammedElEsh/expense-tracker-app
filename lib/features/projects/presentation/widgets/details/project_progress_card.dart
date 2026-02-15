@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class ProjectProgressCard extends StatelessWidget {
-  final Project project;
+  final ProjectEntity project;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;

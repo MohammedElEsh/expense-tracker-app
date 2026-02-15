@@ -1,9 +1,10 @@
-// Vendors - Search and Filter Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_status.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_type.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
 
 class VendorsSearchFilter extends StatelessWidget {
   final TextEditingController searchController;
@@ -43,19 +44,17 @@ class VendorsSearchFilter extends StatelessWidget {
                 controller: searchController,
                 onChanged: onSearchChanged,
                 decoration: InputDecoration(
-                  hintText:
-                      isRTL ? 'البحث في الموردين...' : 'Search vendors...',
+                  hintText: isRTL ? 'البحث في الموردين...' : 'Search vendors...',
                   prefixIcon: const Icon(Icons.search),
-                  suffixIcon:
-                      searchQuery.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              searchController.clear();
-                              onSearchChanged('');
-                            },
-                          )
-                          : null,
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            searchController.clear();
+                            onSearchChanged('');
+                          },
+                        )
+                      : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -71,8 +70,7 @@ class VendorsSearchFilter extends StatelessWidget {
                   children: [
                     _buildFilterChip(
                       label: isRTL ? 'الكل' : 'All',
-                      isSelected:
-                          selectedType == null && selectedStatus == null,
+                      isSelected: selectedType == null && selectedStatus == null,
                       onTap: () {
                         onTypeChanged(null);
                         onStatusChanged(null);
@@ -80,17 +78,15 @@ class VendorsSearchFilter extends StatelessWidget {
                       settings: settings,
                     ),
                     const SizedBox(width: 8),
-                    ...VendorType.values.map(
-                      (type) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildFilterChip(
-                          label: _getVendorTypeName(type),
-                          isSelected: selectedType == type,
-                          onTap: () => onTypeChanged(type),
-                          settings: settings,
-                        ),
-                      ),
-                    ),
+                    ...VendorType.values.map((type) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildFilterChip(
+                            label: type.displayName(isRTL),
+                            isSelected: selectedType == type,
+                            onTap: () => onTypeChanged(type),
+                            settings: settings,
+                          ),
+                        )),
                   ],
                 ),
               ),
@@ -112,42 +108,21 @@ class VendorsSearchFilter extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? Colors.blue
-                  : settings.isDarkMode
-                  ? Colors.grey[800]
-                  : Colors.grey[200],
+          color: isSelected
+              ? Colors.blue
+              : (settings.isDarkMode ? Colors.grey[800]! : Colors.grey[200]!),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color:
-                isSelected
-                    ? Colors.white
-                    : settings.isDarkMode
-                    ? Colors.white
-                    : Colors.black87,
+            color: isSelected
+                ? Colors.white
+                : (settings.isDarkMode ? Colors.white : Colors.black87),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),
     );
-  }
-
-  String _getVendorTypeName(VendorType type) {
-    switch (type) {
-      case VendorType.supplier:
-        return isRTL ? 'مورد' : 'Supplier';
-      case VendorType.serviceProvider:
-        return isRTL ? 'خدمات' : 'Service Provider';
-      case VendorType.contractor:
-        return isRTL ? 'مقاول' : 'Contractor';
-      case VendorType.consultant:
-        return isRTL ? 'استشاري' : 'Consultant';
-      case VendorType.other:
-        return isRTL ? 'أخرى' : 'Other';
-    }
   }
 }

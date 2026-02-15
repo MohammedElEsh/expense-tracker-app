@@ -1,275 +1,213 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
-import 'package:expense_tracker/features/vendors/data/datasources/vendor_service.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_status.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_type.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/create_vendor_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/delete_vendor_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/get_vendors_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/get_vendors_statistics_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/update_vendor_usecase.dart';
 import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 
 class VendorCubit extends Cubit<VendorState> {
-  final VendorService _vendorService;
+  final GetVendorsUseCase getVendorsUseCase;
+  final CreateVendorUseCase createVendorUseCase;
+  final UpdateVendorUseCase updateVendorUseCase;
+  final DeleteVendorUseCase deleteVendorUseCase;
+  final GetVendorsStatisticsUseCase getVendorsStatisticsUseCase;
 
-  VendorCubit({VendorService? vendorService})
-    : _vendorService = vendorService ?? serviceLocator.vendorService,
-      super(const VendorState());
+  VendorCubit({
+    required this.getVendorsUseCase,
+    required this.createVendorUseCase,
+    required this.updateVendorUseCase,
+    required this.deleteVendorUseCase,
+    required this.getVendorsStatisticsUseCase,
+  }) : super(const VendorInitial());
 
-  /// Load all vendors from API
+  static String _messageFromError(Object error) {
+    final s = error.toString();
+    if (s.contains('NetworkException') || s.contains('SocketException')) {
+      return 'Network error. Please check your connection.';
+    }
+    if (s.contains('ServerException')) return 'Server error. Please try again later.';
+    if (s.contains('UnauthorizedException') || s.contains('401')) {
+      return 'Authentication failed. Please log in again.';
+    }
+    if (s.contains('ValidationException')) return s.replaceAll('Exception: ', '');
+    return s.replaceAll('Exception: ', '');
+  }
+
   Future<void> loadVendors() async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is VendorLoading) return;
+    emit(const VendorLoading());
     try {
-      debugPrint('🔄 Loading vendors...');
-      final vendors = await _vendorService.getAllVendors();
-
-      debugPrint('✅ Loaded ${vendors.length} vendors');
-
-      final filteredVendors = _applyFilters(vendors);
-
-      emit(
-        state.copyWith(
-          vendors: vendors,
-          filteredVendors: filteredVendors,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error loading vendors: $error');
-      String errorMessage = 'Failed to load vendors';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (error.toString().contains('UnauthorizedException') ||
-          error.toString().contains('401')) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else {
-        errorMessage =
-            'Failed to load vendors: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final vendors = await getVendorsUseCase();
+      final stats = await getVendorsStatisticsUseCase();
+      final filtered = _applyFilters(vendors);
+      emit(VendorLoaded(
+        vendors: vendors,
+        filteredVendors: filtered,
+        statistics: stats,
+      ));
+    } catch (e) {
+      debugPrint('VendorCubit loadVendors error: $e');
+      emit(VendorError(_messageFromError(e)));
     }
   }
 
-  /// Create a new vendor
-  Future<void> createVendor(Vendor vendor) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> createVendor(VendorEntity vendor) async {
+    if (state is VendorLoading) return;
+    final prev = state is VendorLoaded ? state as VendorLoaded : null;
+    emit(const VendorLoading());
     try {
-      debugPrint('➕ Creating vendor: ${vendor.name}');
-      final createdVendor = await _vendorService.createVendor(vendor);
-
-      debugPrint('✅ Vendor created: ${createdVendor.id}');
-
-      final updatedVendors = List<Vendor>.from(state.vendors)
-        ..add(createdVendor);
-      final filteredVendors = _applyFilters(updatedVendors);
-
-      emit(
-        state.copyWith(
-          vendors: updatedVendors,
-          filteredVendors: filteredVendors,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error creating vendor: $error');
-      String errorMessage = 'Failed to create vendor';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to create vendor: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final created = await createVendorUseCase(vendor);
+      final list = prev?.vendors ?? <VendorEntity>[];
+      final updated = List<VendorEntity>.from(list)..add(created);
+      final filtered = _applyFilters(updated, existingState: prev);
+      emit(VendorLoaded(
+        vendors: updated,
+        filteredVendors: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedType: prev?.selectedType,
+        selectedStatus: prev?.selectedStatus,
+      ));
+    } catch (e) {
+      debugPrint('VendorCubit createVendor error: $e');
+      emit(VendorError(_messageFromError(e)));
     }
   }
 
-  /// Update an existing vendor
-  Future<void> updateVendor(Vendor vendor) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> updateVendor(VendorEntity vendor) async {
+    if (state is VendorLoading) return;
+    final prev = state is VendorLoaded ? state as VendorLoaded : null;
+    emit(const VendorLoading());
     try {
-      debugPrint('✏️ Updating vendor: ${vendor.id}');
-      final updatedVendor = await _vendorService.updateVendor(vendor);
-
-      debugPrint('✅ Vendor updated: ${updatedVendor.id}');
-
-      final updatedVendors = List<Vendor>.from(state.vendors);
-      final index = updatedVendors.indexWhere((v) => v.id == vendor.id);
-      if (index != -1) {
-        updatedVendors[index] = updatedVendor;
-      }
-      final filteredVendors = _applyFilters(updatedVendors);
-
-      emit(
-        state.copyWith(
-          vendors: updatedVendors,
-          filteredVendors: filteredVendors,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error updating vendor: $error');
-      String errorMessage = 'Failed to update vendor';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ValidationException')) {
-        errorMessage = error.toString().replaceAll('Exception: ', '');
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to update vendor: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final updatedVendor = await updateVendorUseCase(vendor);
+      final list = prev?.vendors ?? <VendorEntity>[];
+      final updated = list.map((v) => v.id == vendor.id ? updatedVendor : v).toList();
+      final filtered = _applyFilters(updated, existingState: prev);
+      emit(VendorLoaded(
+        vendors: updated,
+        filteredVendors: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedType: prev?.selectedType,
+        selectedStatus: prev?.selectedStatus,
+      ));
+    } catch (e) {
+      debugPrint('VendorCubit updateVendor error: $e');
+      emit(VendorError(_messageFromError(e)));
     }
   }
 
-  /// Delete a vendor by ID
   Future<void> deleteVendor(String vendorId) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is VendorLoading) return;
+    final prev = state is VendorLoaded ? state as VendorLoaded : null;
+    emit(const VendorLoading());
     try {
-      debugPrint('🗑️ Deleting vendor: $vendorId');
-      await _vendorService.deleteVendor(vendorId);
-
-      debugPrint('✅ Vendor deleted: $vendorId');
-
-      final updatedVendors = List<Vendor>.from(state.vendors)
-        ..removeWhere((v) => v.id == vendorId);
-      final filteredVendors = _applyFilters(updatedVendors);
-
-      emit(
-        state.copyWith(
-          vendors: updatedVendors,
-          filteredVendors: filteredVendors,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error deleting vendor: $error');
-      String errorMessage = 'Failed to delete vendor';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to delete vendor: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      await deleteVendorUseCase(vendorId);
+      final list = prev?.vendors ?? <VendorEntity>[];
+      final updated = list.where((v) => v.id != vendorId).toList();
+      final filtered = _applyFilters(updated, existingState: prev);
+      emit(VendorLoaded(
+        vendors: updated,
+        filteredVendors: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedType: prev?.selectedType,
+        selectedStatus: prev?.selectedStatus,
+      ));
+    } catch (e) {
+      debugPrint('VendorCubit deleteVendor error: $e');
+      emit(VendorError(_messageFromError(e)));
     }
   }
 
-  /// Search vendors by query string
   void searchVendors(String query) {
-    emit(
-      state.copyWith(
-        searchQuery: query.isEmpty ? null : query,
-        clearSearchQuery: query.isEmpty,
-        filteredVendors: _applyFilters(
-          state.vendors,
-          searchOverride: query.isEmpty ? null : query,
-        ),
-      ),
+    final s = state;
+    if (s is! VendorLoaded) return;
+    final filtered = _applyFilters(
+      s.vendors,
+      searchOverride: query.isEmpty ? null : query,
+      existingState: s,
     );
+    emit(VendorLoaded(
+      vendors: s.vendors,
+      filteredVendors: filtered,
+      statistics: s.statistics,
+      searchQuery: query.isEmpty ? null : query,
+      selectedType: s.selectedType,
+      selectedStatus: s.selectedStatus,
+    ));
   }
 
-  /// Filter vendors by type
   void filterByType(VendorType? type) {
-    emit(
-      state.copyWith(
-        selectedType: type,
-        clearSelectedType: type == null,
-        filteredVendors: _applyFilters(
-          state.vendors,
-          typeOverride: type,
-          clearType: type == null,
-        ),
-      ),
-    );
+    final s = state;
+    if (s is! VendorLoaded) return;
+    final filtered = _applyFilters(s.vendors, typeOverride: type, existingState: s);
+    emit(VendorLoaded(
+      vendors: s.vendors,
+      filteredVendors: filtered,
+      statistics: s.statistics,
+      searchQuery: s.searchQuery,
+      selectedType: type,
+      selectedStatus: s.selectedStatus,
+    ));
   }
 
-  /// Filter vendors by status
   void filterByStatus(VendorStatus? status) {
-    emit(
-      state.copyWith(
-        selectedStatus: status,
-        clearSelectedStatus: status == null,
-        filteredVendors: _applyFilters(
-          state.vendors,
-          statusOverride: status,
-          clearStatus: status == null,
-        ),
-      ),
-    );
+    final s = state;
+    if (s is! VendorLoaded) return;
+    final filtered = _applyFilters(s.vendors, statusOverride: status, existingState: s);
+    emit(VendorLoaded(
+      vendors: s.vendors,
+      filteredVendors: filtered,
+      statistics: s.statistics,
+      searchQuery: s.searchQuery,
+      selectedType: s.selectedType,
+      selectedStatus: status,
+    ));
   }
 
-  /// Clear all active filters
   void clearFilters() {
-    emit(
-      state.copyWith(
-        clearSearchQuery: true,
-        clearSelectedType: true,
-        clearSelectedStatus: true,
-        filteredVendors: state.vendors,
-      ),
-    );
+    final s = state;
+    if (s is! VendorLoaded) return;
+    emit(VendorLoaded(
+      vendors: s.vendors,
+      filteredVendors: s.vendors,
+      statistics: s.statistics,
+    ));
   }
 
-  /// Apply all active filters to the vendors list
-  List<Vendor> _applyFilters(
-    List<Vendor> vendors, {
+  List<VendorEntity> _applyFilters(
+    List<VendorEntity> vendors, {
     String? searchOverride,
     VendorType? typeOverride,
     VendorStatus? statusOverride,
-    bool clearType = false,
-    bool clearStatus = false,
+    VendorState? existingState,
   }) {
-    var filtered = List<Vendor>.from(vendors);
+    var filtered = List<VendorEntity>.from(vendors);
+    final loaded = existingState is VendorLoaded ? existingState : null;
 
-    // Search filter
-    final query = searchOverride ?? state.searchQuery;
+    final query = searchOverride ?? loaded?.searchQuery;
     if (query != null && query.isNotEmpty) {
-      final lowerQuery = query.toLowerCase();
-      filtered =
-          filtered.where((vendor) {
-            return vendor.name.toLowerCase().contains(lowerQuery) ||
-                (vendor.companyName?.toLowerCase().contains(lowerQuery) ??
-                    false) ||
-                (vendor.email?.toLowerCase().contains(lowerQuery) ?? false) ||
-                (vendor.phone?.contains(query) ?? false) ||
-                (vendor.notes?.toLowerCase().contains(lowerQuery) ?? false);
-          }).toList();
+      final lower = query.toLowerCase();
+      filtered = filtered.where((v) {
+        return v.name.toLowerCase().contains(lower) ||
+            (v.companyName?.toLowerCase().contains(lower) ?? false) ||
+            (v.email?.toLowerCase().contains(lower) ?? false) ||
+            (v.phone?.contains(query) ?? false) ||
+            (v.notes?.toLowerCase().contains(lower) ?? false);
+      }).toList();
     }
 
-    // Type filter
-    final type = clearType ? null : (typeOverride ?? state.selectedType);
-    if (type != null) {
-      filtered = filtered.where((vendor) => vendor.type == type).toList();
-    }
+    final type = typeOverride ?? loaded?.selectedType;
+    if (type != null) filtered = filtered.where((v) => v.type == type).toList();
 
-    // Status filter
-    final status =
-        clearStatus ? null : (statusOverride ?? state.selectedStatus);
-    if (status != null) {
-      filtered = filtered.where((vendor) => vendor.status == status).toList();
-    }
+    final status = statusOverride ?? loaded?.selectedStatus;
+    if (status != null) filtered = filtered.where((v) => v.status == status).toList();
 
     return filtered;
   }

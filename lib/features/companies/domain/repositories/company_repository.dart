@@ -1,29 +1,22 @@
-import 'package:expense_tracker/features/companies/data/models/company.dart';
+import 'package:expense_tracker/features/companies/domain/entities/company_entity.dart';
 
-/// Abstract repository interface for company operations.
-///
-/// Defines the contract for company data access. Implementations
-/// handle the actual data fetching (API, local cache, etc.).
+/// Repository interface for company operations.
+/// Implementations delegate to API/data sources and map to entities.
 abstract class CompanyRepository {
-  /// Get the current user's company.
-  ///
-  /// Returns `null` if no company is found or if the user is not in business mode.
-  /// Set [forceRefresh] to `true` to bypass cached data.
-  Future<Company?> getMyCompany({bool forceRefresh = false});
+  /// Get the current user's company (single company per user in business mode).
+  Future<CompanyEntity?> getMyCompany({bool forceRefresh = false});
+
+  /// Get company by id. In this system, effectively returns my company if id matches.
+  Future<CompanyEntity?> getCompanyById(String id);
 
   /// Create a new company.
-  ///
-  /// Only available in business mode. Returns the created [Company].
-  Future<Company> createCompany(Company company);
+  Future<CompanyEntity> createCompany(CompanyEntity company);
 
   /// Update the current user's company.
-  ///
-  /// Returns the updated [Company].
-  Future<Company> updateCompany(Company company);
+  Future<CompanyEntity> updateCompany(CompanyEntity company);
 
   /// Delete the current user's company.
   Future<void> deleteCompany();
 
-  /// Clear any cached company data.
   void clearCache();
 }

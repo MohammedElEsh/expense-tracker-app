@@ -1,64 +1,73 @@
 import 'package:equatable/equatable.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
 
-class ProjectState extends Equatable {
-  final List<Project> projects;
-  final List<Project> filteredProjects;
-  final bool isLoading;
-  final String? error;
-  final Project? selectedProject;
+sealed class ProjectState extends Equatable {
+  const ProjectState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+final class ProjectInitial extends ProjectState {
+  const ProjectInitial();
+}
+
+final class ProjectLoading extends ProjectState {
+  const ProjectLoading();
+}
+
+final class ProjectLoaded extends ProjectState {
+  final List<ProjectEntity> projects;
+  final List<ProjectEntity> filteredProjects;
+  final Map<String, dynamic>? statistics;
   final String? searchQuery;
   final ProjectStatus? selectedStatus;
+  final ProjectEntity? selectedProject;
 
-  const ProjectState({
-    this.projects = const [],
-    this.filteredProjects = const [],
-    this.isLoading = false,
-    this.error,
-    this.selectedProject,
+  const ProjectLoaded({
+    required this.projects,
+    required this.filteredProjects,
+    this.statistics,
     this.searchQuery,
     this.selectedStatus,
+    this.selectedProject,
   });
+
+  bool get hasActiveFilters =>
+      (searchQuery != null && searchQuery!.isNotEmpty) || selectedStatus != null;
 
   @override
   List<Object?> get props => [
-    projects,
-    filteredProjects,
-    isLoading,
-    error,
-    selectedProject,
-    searchQuery,
-    selectedStatus,
-  ];
+        projects,
+        filteredProjects,
+        statistics,
+        searchQuery,
+        selectedStatus,
+        selectedProject,
+      ];
+}
 
-  ProjectState copyWith({
-    List<Project>? projects,
-    List<Project>? filteredProjects,
-    bool? isLoading,
-    String? error,
-    Project? selectedProject,
-    String? searchQuery,
-    ProjectStatus? selectedStatus,
-    bool clearError = false,
-    bool clearSelectedProject = false,
-    bool clearSearchQuery = false,
-    bool clearSelectedStatus = false,
-  }) {
-    return ProjectState(
-      projects: projects ?? this.projects,
-      filteredProjects: filteredProjects ?? this.filteredProjects,
-      isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : (error ?? this.error),
-      selectedProject:
-          clearSelectedProject
-              ? null
-              : (selectedProject ?? this.selectedProject),
-      searchQuery: clearSearchQuery ? null : (searchQuery ?? this.searchQuery),
-      selectedStatus:
-          clearSelectedStatus ? null : (selectedStatus ?? this.selectedStatus),
-    );
-  }
+final class ProjectError extends ProjectState {
+  final String message;
 
-  /// Whether any filters are currently active
-  bool get hasActiveFilters => searchQuery != null || selectedStatus != null;
+  const ProjectError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// Convenience extension for UI (avoids casting in every builder).
+extension ProjectStateX on ProjectState {
+  bool get isLoading => this is ProjectLoading;
+  List<ProjectEntity> get projects =>
+      this is ProjectLoaded ? (this as ProjectLoaded).projects : [];
+  List<ProjectEntity> get filteredProjects =>
+      this is ProjectLoaded ? (this as ProjectLoaded).filteredProjects : [];
+  String? get searchQuery =>
+      this is ProjectLoaded ? (this as ProjectLoaded).searchQuery : null;
+  ProjectStatus? get selectedStatus =>
+      this is ProjectLoaded ? (this as ProjectLoaded).selectedStatus : null;
+  Map<String, dynamic>? get statistics =>
+      this is ProjectLoaded ? (this as ProjectLoaded).statistics : null;
 }

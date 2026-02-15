@@ -1,13 +1,10 @@
 import 'package:expense_tracker/app/app.dart';
-import 'package:expense_tracker/core/services/database_service.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/features/onboarding/data/datasources/onboarding_service.dart';
+import 'package:expense_tracker/core/di/injection.dart';
 import 'package:expense_tracker/features/users/data/datasources/user_service.dart';
+import 'package:expense_tracker/features/users/data/models/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
-import 'package:expense_tracker/core/di/service_locator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,29 +13,20 @@ void main() async {
     const SystemUiOverlayStyle(statusBarColor: Colors.blue),
   );
 
-  // Initialize Service Locator (Dependency Injection)
-  await serviceLocator.init();
-  debugPrint('✅ Service Locator initialized');
+  await initInjector();
+  debugPrint('✅ GetIt injector initialized');
 
-  // Initialize Hive for local storage
   await Hive.initFlutter();
+  Hive.registerAdapter(UserAdapter());
 
-  // تنظيف البيانات القديمة من Local Storage (Projects & Vendors)
   try {
     await _cleanupOldLocalData();
   } catch (e) {
     debugPrint('تنبيه: خطأ في تنظيف البيانات القديمة: $e');
   }
 
-  // Initialize services
-  await DatabaseService.init();
   await UserService.init();
-  await SettingsService.init();
-  // BudgetService is now API-based and initialized via ServiceLocator
-  await OnboardingService.init();
-  // Recurring expenses are now API-based and handled via RecurringExpenseCubit
 
-  // إنشاء مستخدم افتراضي
   try {
     await _createDefaultUser();
   } catch (e) {

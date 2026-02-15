@@ -1,6 +1,6 @@
 // Settings - App Mode Settings Card Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'modern_settings_card.dart';
 

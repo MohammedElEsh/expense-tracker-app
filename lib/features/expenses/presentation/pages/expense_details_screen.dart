@@ -3,23 +3,33 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_detail_cubit.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_detail_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart' as project_data;
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_state.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
 
 // Import Widgets
 import 'package:expense_tracker/features/expenses/presentation/widgets/details/expense_header_card.dart';
@@ -38,144 +48,71 @@ class ExpenseDetailsScreen extends StatefulWidget {
 }
 
 class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
-  // Local expense state that can be updated on refresh
-  late Expense _currentExpense;
   String? _projectName;
   String? _vendorName;
   String? _employeeName;
   Account? _account;
   bool _isLoading = true;
-  bool _isRefreshing = false;
-  String? _refreshError;
 
   @override
   void initState() {
     super.initState();
-    // Initialize local expense state from widget
-    _currentExpense = widget.expense;
-    _loadAdditionalData();
-  }
-
-  /// Refresh expense data by calling GET /api/expenses/:id
-  Future<void> _refreshExpense() async {
-    if (_isRefreshing) return; // Prevent duplicate calls
-
-    setState(() {
-      _isRefreshing = true;
-      _refreshError = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAdditionalData(context, widget.expense);
     });
-
-    try {
-      debugPrint('🔄 Refreshing expense: ${_currentExpense.id}');
-
-      // Call GET /api/expenses/:id to get latest expense data
-      final updatedExpense = await serviceLocator.expenseApiService
-          .getExpenseById(_currentExpense.id);
-
-      debugPrint('✅ Expense refreshed: ${updatedExpense.id}');
-
-      if (mounted) {
-        // Update local expense state with new API response
-        setState(() {
-          _currentExpense = updatedExpense;
-          _isRefreshing = false;
-        });
-
-        // Reload additional data (project, employee, account) to refresh UI
-        await _loadAdditionalData();
-      }
-    } catch (e) {
-      debugPrint('❌ Error refreshing expense: $e');
-      if (mounted) {
-        String errorMessage = 'Failed to refresh expense';
-        if (e.toString().contains('NetworkException') ||
-            e.toString().contains('SocketException')) {
-          errorMessage = 'Network error. Please check your connection.';
-        } else if (e.toString().contains('ServerException')) {
-          errorMessage = 'Server error. Please try again later.';
-        } else {
-          errorMessage =
-              'Failed to refresh: ${e.toString().replaceAll('Exception: ', '')}';
-        }
-
-        setState(() {
-          _isRefreshing = false;
-          _refreshError = errorMessage;
-        });
-
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: AppSpacing.iconSm,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(child: Text(errorMessage)),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
   }
 
-  Future<void> _loadAdditionalData() async {
+  /// Refresh expense via Cubit (no direct API/service calls from UI).
+  Future<void> _refreshExpense() async {
+    await context.read<ExpenseDetailCubit>().refreshExpense();
+    if (!mounted) return;
+    final expense = context.read<ExpenseDetailCubit>().state.expense;
+    if (expense != null) await _loadAdditionalData(context, expense);
+  }
+
+  Future<void> _loadAdditionalData(BuildContext context, Expense expense) async {
     setState(() => _isLoading = true);
 
     try {
-      // Load project name
-      if (_currentExpense.projectId != null &&
-          _currentExpense.projectId!.isNotEmpty) {
+      if (expense.projectId != null && expense.projectId!.isNotEmpty) {
         try {
-          final project = await serviceLocator.projectService.getProjectById(
-            _currentExpense.projectId!,
+          final project = await context.read<ProjectCubit>().getProjectById(
+            expense.projectId!,
           );
           if (project != null && mounted) {
             setState(() => _projectName = project.name);
             debugPrint('✅ Loaded project name: ${project.name}');
           } else {
-            debugPrint('⚠️ Project not found: ${_currentExpense.projectId}');
+            debugPrint('⚠️ Project not found: ${expense.projectId}');
           }
         } catch (e) {
           debugPrint('❌ Error loading project: $e');
         }
       }
 
-      // Load vendor name (stored directly in expense)
-      if (_currentExpense.vendorName != null &&
-          _currentExpense.vendorName!.isNotEmpty) {
-        setState(() => _vendorName = _currentExpense.vendorName);
-        debugPrint('✅ Loaded vendor name: ${_currentExpense.vendorName}');
+      if (expense.vendorName != null && expense.vendorName!.isNotEmpty) {
+        setState(() => _vendorName = expense.vendorName);
+        debugPrint('✅ Loaded vendor name: ${expense.vendorName}');
       }
 
-      // Load employee name from UserCubit
-      if (_currentExpense.employeeId != null &&
-          _currentExpense.employeeId!.isNotEmpty) {
-        await _tryLoadEmployeeFromUsers();
+      if (expense.employeeId != null && expense.employeeId!.isNotEmpty) {
+        await _tryLoadEmployeeFromUsers(context, expense.employeeId!);
       }
 
-      // تحميل معلومات الحساب
       if (!mounted) return;
       final accountState = context.read<AccountCubit>().state;
-      final account = accountState.getAccountById(_currentExpense.accountId);
+      final account = accountState.getAccountById(expense.accountId);
       if (account != null && mounted) {
         setState(() => _account = account);
         debugPrint('✅ تم تحميل معلومات الحساب: ${account.name}');
       }
 
-      // طباعة جميع البيانات الإضافية للمصروف
       debugPrint('📊 بيانات المصروف الإضافية:');
-      debugPrint('   - Project ID: ${_currentExpense.projectId}');
-      debugPrint('   - Vendor Name: ${_currentExpense.vendorName}');
-      debugPrint('   - Employee ID: ${_currentExpense.employeeId}');
-      debugPrint('   - Department: ${_currentExpense.department}');
-      debugPrint('   - Invoice Number: ${_currentExpense.invoiceNumber}');
+      debugPrint('   - Project ID: ${expense.projectId}');
+      debugPrint('   - Vendor Name: ${expense.vendorName}');
+      debugPrint('   - Employee ID: ${expense.employeeId}');
+      debugPrint('   - Department: ${expense.department}');
+      debugPrint('   - Invoice Number: ${expense.invoiceNumber}');
     } catch (e) {
       debugPrint('❌ خطأ في تحميل البيانات الإضافية: $e');
     } finally {
@@ -188,17 +125,20 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) {
-        return BlocBuilder<UserCubit, UserState>(
-          builder: (context, userState) {
-            final isRTL = settings.language == 'ar';
-            final currentUser = userState.currentUser;
+        builder: (context, settings) {
+          return BlocBuilder<UserCubit, UserState>(
+            builder: (context, userState) {
+              return BlocBuilder<ExpenseDetailCubit, ExpenseDetailState>(
+                builder: (context, detailState) {
+                  final expense = detailState.expense ?? widget.expense;
+                  final isRTL = settings.language == 'ar';
+                  final currentUser = userState is UserLoaded ? userState.currentUser : null;
 
-            // 🔒 التحقق من الصلاحيات
-            final canEdit = _canEditExpense(currentUser, settings.appMode);
-            final canDelete = _canDeleteExpense(currentUser, settings.appMode);
+                  // 🔒 التحقق من الصلاحيات
+                  final canEdit = _canEditExpense(currentUser, settings.appMode, expense);
+                  final canDelete = _canDeleteExpense(currentUser, settings.appMode, expense);
 
-            return Directionality(
+                  return Directionality(
               textDirection:
                   isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
               child: Scaffold(
@@ -216,7 +156,7 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                         } else if (value == 'delete' && canDelete) {
                           await _deleteExpense(context, isRTL);
                         } else if (value == 'share') {
-                          _shareExpense(isRTL);
+                          _shareExpense(context, isRTL);
                         }
                       },
                       itemBuilder:
@@ -277,108 +217,114 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
                         ? const Center(child: CircularProgressIndicator())
                         : RefreshIndicator(
                           onRefresh: _refreshExpense,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Show refresh error if any
-                                if (_refreshError != null)
-                                  Container(
-                                    margin: const EdgeInsets.only(
-                                      bottom: AppSpacing.md,
-                                    ),
-                                    padding: const EdgeInsets.all(
-                                      AppSpacing.sm,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.errorLight,
-                                      borderRadius: BorderRadius.circular(
-                                        AppSpacing.radiusSm,
-                                      ),
-                                      border: Border.all(
-                                        color: AppColors.error.withOpacity(0.5),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.error_outline,
-                                          color: AppColors.error,
-                                          size: AppSpacing.iconSm,
+                          child: Stack(
+                            children: [
+                              SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Show refresh error if any
+                                    if (detailState.error != null)
+                                      Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: AppSpacing.md,
                                         ),
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Expanded(
-                                          child: Text(
-                                            _refreshError!,
-                                            style: AppTypography.bodyMedium
-                                                .copyWith(
-                                                  color: AppColors.error,
-                                                ),
+                                        padding: const EdgeInsets.all(
+                                          AppSpacing.sm,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.errorLight,
+                                          borderRadius: BorderRadius.circular(
+                                            AppSpacing.radiusSm,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.error.withOpacity(0.5),
                                           ),
                                         ),
-                                      ],
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.error_outline,
+                                              color: AppColors.error,
+                                              size: AppSpacing.iconSm,
+                                            ),
+                                            const SizedBox(width: AppSpacing.xs),
+                                            Expanded(
+                                              child: Text(
+                                                detailState.error!,
+                                                style: AppTypography.bodyMedium
+                                                    .copyWith(
+                                                      color: AppColors.error,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    // Header - المبلغ والفئة
+                                    ExpenseHeaderCard(
+                                      expense: expense,
+                                      isRTL: isRTL,
+                                      currency: settings.currency,
                                     ),
-                                  ),
+                                    const SizedBox(height: AppSpacing.xl),
 
-                                // Header - المبلغ والفئة
-                                ExpenseHeaderCard(
-                                  expense: _currentExpense,
-                                  isRTL: isRTL,
-                                  currency: settings.currency,
+                                    // التفاصيل الأساسية
+                                    ExpenseBasicDetailsCard(
+                                      expense: expense,
+                                      isRTL: isRTL,
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+
+                                    // الحساب البنكي
+                                    if (_account != null) ...[
+                                      ExpenseAccountInfoCard(
+                                        account: _account,
+                                        isRTL: isRTL,
+                                        currency: settings.currency,
+                                      ),
+                                      const SizedBox(height: AppSpacing.md),
+                                    ],
+
+                                    // صورة الإيصال
+                                    if (expense.photoPath != null) ...[
+                                      ExpenseReceiptImageCard(
+                                        expense: expense,
+                                        isRTL: isRTL,
+                                        onViewFullImage: () => _viewFullImage(context),
+                                      ),
+                                      const SizedBox(height: AppSpacing.md),
+                                    ],
+
+                                    // معلومات إضافية (تشمل التفاصيل التجارية)
+                                    ExpenseAdditionalInfoCard(
+                                      expense: expense,
+                                      isRTL: isRTL,
+                                      employeeName: _employeeName,
+                                      projectName: _projectName,
+                                      vendorName: _vendorName,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: AppSpacing.xl),
-
-                                // التفاصيل الأساسية
-                                ExpenseBasicDetailsCard(
-                                  expense: _currentExpense,
-                                  isRTL: isRTL,
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-
-                                // الحساب البنكي
-                                if (_account != null) ...[
-                                  ExpenseAccountInfoCard(
-                                    account: _account,
-                                    isRTL: isRTL,
-                                    currency: settings.currency,
-                                  ),
-                                  const SizedBox(height: AppSpacing.md),
-                                ],
-
-                                // صورة الإيصال
-                                if (_currentExpense.photoPath != null) ...[
-                                  ExpenseReceiptImageCard(
-                                    expense: _currentExpense,
-                                    isRTL: isRTL,
-                                    onViewFullImage: _viewFullImage,
-                                  ),
-                                  const SizedBox(height: AppSpacing.md),
-                                ],
-
-                                // معلومات إضافية (تشمل التفاصيل التجارية)
-                                ExpenseAdditionalInfoCard(
-                                  expense: _currentExpense,
-                                  isRTL: isRTL,
-                                  employeeName: _employeeName,
-                                  projectName: _projectName,
-                                  vendorName: _vendorName,
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-              ),
-            );
-          },
-        );
-      },
+                      ),
+                    );
+                },
+              );
+            },
+          );
+        },
     );
   }
 
   // 🔒 التحقق من صلاحية التعديل
-  bool _canEditExpense(User? currentUser, AppMode appMode) {
+  bool _canEditExpense(UserEntity? currentUser, AppMode appMode, Expense expense) {
     if (currentUser == null) {
       debugPrint('🔒 canEdit: false - currentUser is null');
       return false;
@@ -392,27 +338,21 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
 
     debugPrint('🔒 Checking edit permission:');
     debugPrint('   - Current User: $currentUserId');
-    debugPrint('   - Expense employeeId: ${_currentExpense.employeeId}');
+    debugPrint('   - Expense employeeId: ${expense.employeeId}');
     debugPrint('   - App Mode: $appMode');
     debugPrint('   - User Role: ${currentUser.role}');
 
     if (appMode == AppMode.personal) {
-      // في الوضع الشخصي: فقط صاحب المصروف
-      // نستخدم employeeId إذا كان موجود، وإلا نفترض أنه صاحبه
       final canEdit =
-          _currentExpense.employeeId == null ||
-          _currentExpense.employeeId == currentUserId;
+          expense.employeeId == null || expense.employeeId == currentUserId;
       debugPrint('🔒 Personal mode - canEdit: $canEdit');
       return canEdit;
     } else {
-      // في الوضع التجاري
       if (currentUser.role == UserRole.owner) {
-        // المدير يستطيع تعديل كل المصروفات
         debugPrint('🔒 Business mode - Owner - canEdit: true');
         return true;
       } else {
-        // الموظف يستطيع تعديل مصروفاته فقط
-        final canEdit = _currentExpense.employeeId == currentUserId;
+        final canEdit = expense.employeeId == currentUserId;
         debugPrint('🔒 Business mode - Employee - canEdit: $canEdit');
         return canEdit;
       }
@@ -420,32 +360,63 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
   }
 
   // 🔒 التحقق من صلاحية الحذف
-  bool _canDeleteExpense(User? currentUser, AppMode appMode) {
+  bool _canDeleteExpense(UserEntity? currentUser, AppMode appMode, Expense expense) {
     if (currentUser == null) return false;
 
     final currentUserId = currentUser.id;
     if (currentUserId.isEmpty) return false;
 
     if (appMode == AppMode.personal) {
-      // في الوضع الشخصي: فقط صاحب المصروف
-      // نستخدم employeeId إذا كان موجود، وإلا نفترض أنه صاحبه
-      return _currentExpense.employeeId == null ||
-          _currentExpense.employeeId == currentUserId;
+      return expense.employeeId == null || expense.employeeId == currentUserId;
     } else {
-      // في الوضع التجاري: فقط المدير
       return currentUser.role == UserRole.owner;
     }
   }
 
   Future<void> _editExpense(BuildContext context, bool isRTL) async {
-    // Navigate to edit screen and wait for result
-    final result = await Navigator.of(context).push<Expense>(
-      MaterialPageRoute(
-        builder:
-            (context) => AddExpenseDialog(
-              selectedDate: _currentExpense.date,
-              expenseToEdit: _currentExpense,
-            ),
+    final expense = context.read<ExpenseDetailCubit>().state.expense ?? widget.expense;
+    final projectCubit = context.read<ProjectCubit>();
+    final vendorCubit = context.read<VendorCubit>();
+    final projectState = projectCubit.state;
+    final projectEntities = projectState is ProjectLoaded
+        ? projectState.projects
+            .where((p) =>
+                p.status != ProjectStatus.cancelled &&
+                p.status != ProjectStatus.completed)
+            .toList()
+        : <ProjectEntity>[];
+    final projects = projectEntities
+        .map((p) => project_data.Project(
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              status: project_data.ProjectStatus.values.firstWhere(
+                (s) => s.name == p.status.name,
+                orElse: () => project_data.ProjectStatus.planning,
+              ),
+              startDate: p.startDate,
+              endDate: p.endDate,
+              budget: p.budget,
+              spentAmount: p.spentAmount,
+              managerName: p.managerName,
+              clientName: p.clientName,
+              priority: p.priority,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+            ))
+        .toList();
+    final vendorState = vendorCubit.state;
+    final vendorNames = vendorState is VendorLoaded
+        ? vendorState.vendors.map((v) => v.name).toList()
+        : <String>[];
+    final result = await showDialog<Expense>(
+      context: context,
+      builder: (ctx) => AddExpenseDialog.createWithCubit(
+        ctx,
+        selectedDate: expense.date,
+        expenseToEdit: expense,
+        projects: projects,
+        vendorNames: vendorNames,
       ),
     );
 
@@ -472,11 +443,11 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.pop(false),
                 child: Text(isRTL ? 'إلغاء' : 'Cancel'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.pop(true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
@@ -489,12 +460,12 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
 
     if (confirmed == true && mounted) {
       try {
-        // Delete expense via BLoC
-        context.read<ExpenseCubit>().deleteExpense(_currentExpense.id);
+        final expense = context.read<ExpenseDetailCubit>().state.expense ?? widget.expense;
+        context.read<ExpenseCubit>().deleteExpense(expense.id);
 
         // Navigate back to expenses list
         if (mounted) {
-          Navigator.of(context).pop();
+          context.pop();
 
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -534,14 +505,15 @@ class _ExpenseDetailsScreenState extends State<ExpenseDetailsScreen> {
     }
   }
 
-  void _shareExpense(bool isRTL) {
-    final categoryName = _currentExpense.category;
+  void _shareExpense(BuildContext context, bool isRTL) {
+    final expense = context.read<ExpenseDetailCubit>().state.expense ?? widget.expense;
+    final categoryName = expense.category;
     final text = '''
 ${isRTL ? 'تفاصيل المصروف' : 'Expense Details'}:
-${isRTL ? 'المبلغ' : 'Amount'}: ${_currentExpense.amount}
+${isRTL ? 'المبلغ' : 'Amount'}: ${expense.amount}
 ${isRTL ? 'الفئة' : 'Category'}: $categoryName
-${isRTL ? 'الملاحظات' : 'Notes'}: ${_currentExpense.notes}
-${isRTL ? 'التاريخ' : 'Date'}: ${DateFormat('dd/MM/yyyy').format(_currentExpense.date)}
+${isRTL ? 'الملاحظات' : 'Notes'}: ${expense.notes}
+${isRTL ? 'التاريخ' : 'Date'}: ${DateFormat('dd/MM/yyyy').format(expense.date)}
 ''';
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -550,49 +522,49 @@ ${isRTL ? 'التاريخ' : 'Date'}: ${DateFormat('dd/MM/yyyy').format(_current
     debugPrint('Share text: $text');
   }
 
-  void _viewFullImage() {
-    if (_currentExpense.photoPath == null) return;
+  void _viewFullImage(BuildContext context) {
+    final expense = context.read<ExpenseDetailCubit>().state.expense ?? widget.expense;
+    if (expense.photoPath == null) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder:
-            (context) => Scaffold(
-              backgroundColor: Colors.black,
-              appBar: AppBar(
-                backgroundColor: Colors.black,
-                iconTheme: const IconThemeData(color: Colors.white),
-              ),
-              body: Center(
-                child: InteractiveViewer(
-                  child: Image.file(File(_currentExpense.photoPath!)),
-                ),
-              ),
-            ),
+    showDialog<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => ctx.pop(),
+          ),
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            child: Image.file(File(expense.photoPath!)),
+          ),
+        ),
       ),
     );
   }
 
   /// محاولة تحميل الموظف من users collection مباشرة
-  Future<void> _tryLoadEmployeeFromUsers() async {
-    if (_currentExpense.employeeId != null &&
-        _currentExpense.employeeId!.isNotEmpty) {
-      try {
-        // جرب البحث في users collection مباشرة
-        if (!mounted) return;
-        final userState = context.read<UserCubit>().state;
-        if (userState.users.isNotEmpty) {
-          final employee = userState.users.firstWhere(
-            (user) => user.id == _currentExpense.employeeId,
-            orElse: () => throw StateError('User not found'),
-          );
-          if (mounted) {
-            setState(() => _employeeName = employee.name);
-            debugPrint('✅ تم تحميل اسم الموظف من UserCubit: ${employee.name}');
-          }
+  Future<void> _tryLoadEmployeeFromUsers(BuildContext context, String employeeId) async {
+    try {
+      if (!mounted) return;
+      final userState = context.read<UserCubit>().state;
+      if (userState is UserLoaded && userState.users.isNotEmpty) {
+        final employee = userState.users.firstWhere(
+          (user) => user.id == employeeId,
+          orElse: () => throw StateError('User not found'),
+        );
+        if (mounted) {
+          setState(() => _employeeName = employee.name);
+          debugPrint('✅ تم تحميل اسم الموظف من UserCubit: ${employee.name}');
         }
-      } catch (e) {
-        debugPrint('❌ لم يتم العثور على الموظف في UserCubit: $e');
       }
+    } catch (e) {
+      debugPrint('❌ لم يتم العثور على الموظف في UserCubit: $e');
     }
   }
 }

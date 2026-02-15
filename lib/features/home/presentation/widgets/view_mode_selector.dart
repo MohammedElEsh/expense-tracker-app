@@ -1,5 +1,6 @@
 // Home Feature - Presentation Layer - View Mode Selector Widget
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 
 class ViewModeSelector extends StatelessWidget {
@@ -64,7 +65,7 @@ class ViewModeSelector extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        Navigator.of(context).pop(); // أغلق الـ BottomSheet أولاً
+        context.pop(); // Close bottom sheet
         onViewModeChanged(mode); // ثم غيّر الوضع
       },
       child: Container(

@@ -1,5 +1,6 @@
 // Home Feature - Presentation Layer - Logout Confirmation Dialog Widget
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeLogoutDialog extends StatelessWidget {
   final bool isRTL;
@@ -17,11 +18,11 @@ class HomeLogoutDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => context.pop(false),
           child: Text(isRTL ? 'إلغاء' : 'Cancel'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () => context.pop(true),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,

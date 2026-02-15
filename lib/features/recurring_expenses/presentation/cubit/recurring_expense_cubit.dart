@@ -1,548 +1,327 @@
-// ✅ Clean Architecture - Presentation Cubit
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/datasources/recurring_expense_api_service.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'recurring_expense_state.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurrence_type.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/create_recurring_expense_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/delete_recurring_expense_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/disable_recurring_reminder_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/enable_recurring_reminder_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/get_recurring_expenses_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/update_recurring_expense_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_state.dart';
 
 class RecurringExpenseCubit extends Cubit<RecurringExpenseState> {
-  final RecurringExpenseApiService _apiService;
+  final GetRecurringExpensesUseCase getRecurringExpensesUseCase;
+  final CreateRecurringExpenseUseCase createRecurringExpenseUseCase;
+  final UpdateRecurringExpenseUseCase updateRecurringExpenseUseCase;
+  final DeleteRecurringExpenseUseCase deleteRecurringExpenseUseCase;
+  final EnableRecurringReminderUseCase enableReminderUseCase;
+  final DisableRecurringReminderUseCase disableReminderUseCase;
 
-  RecurringExpenseCubit({RecurringExpenseApiService? apiService})
-    : _apiService = apiService ?? serviceLocator.recurringExpenseService,
-      super(const RecurringExpenseState());
+  RecurringExpenseCubit({
+    required this.getRecurringExpensesUseCase,
+    required this.createRecurringExpenseUseCase,
+    required this.updateRecurringExpenseUseCase,
+    required this.deleteRecurringExpenseUseCase,
+    required this.enableReminderUseCase,
+    required this.disableReminderUseCase,
+  }) : super(const RecurringExpenseInitial());
+
+  static double _monthlyTotal(List<RecurringExpenseEntity> expenses) {
+    double total = 0.0;
+    for (final e in expenses.where((x) => x.isActive)) {
+      switch (e.recurrenceType) {
+        case RecurrenceType.daily:
+          total += e.amount * 30;
+          break;
+        case RecurrenceType.weekly:
+          total += e.amount * 4;
+          break;
+        case RecurrenceType.monthly:
+          total += e.amount;
+          break;
+        case RecurrenceType.yearly:
+          total += e.amount / 12;
+          break;
+      }
+    }
+    return total;
+  }
+
+  static String _messageFromError(Object error) {
+    final s = error.toString();
+    if (s.contains('NetworkException') || s.contains('SocketException')) {
+      return 'Network error. Please check your connection.';
+    }
+    if (s.contains('ServerException')) return 'Server error. Please try again later.';
+    if (s.contains('403') || s.contains('Forbidden')) {
+      return 'You do not have permission to view recurring expenses.';
+    }
+    if (s.contains('401') || s.contains('Unauthorized')) {
+      return 'Authentication failed. Please log in again.';
+    }
+    return s.replaceAll('Exception: ', '');
+  }
 
   Future<void> loadRecurringExpenses() async {
-    // Guard: Skip if already loading or already loaded with data
-    if (state.isLoading ||
-        (state.hasLoaded && state.allRecurringExpenses.isNotEmpty)) {
-      debugPrint(
-        '⏭️ Skipping loadRecurringExpenses - isLoading: ${state.isLoading}, hasLoaded: ${state.hasLoaded}, expenses: ${state.allRecurringExpenses.length}',
-      );
+    if (state.isLoading || (state.hasLoaded && state.allRecurringExpenses.isNotEmpty)) {
       return;
     }
-
-    // Clear state immediately when loading starts (for context changes)
-    emit(
-      state.copyWith(
-        allRecurringExpenses: const [],
-        filteredRecurringExpenses: const [],
-        monthlyTotal: 0.0,
-        isLoading: true,
-        clearError: true,
-      ),
-    );
-
+    emit(const RecurringExpenseLoading());
     try {
-      final recurringExpenses = await _apiService.loadRecurringExpenses();
-      final monthlyTotal = await _apiService.calculateMonthlyRecurringTotal();
-
-      emit(
-        state.copyWith(
-          allRecurringExpenses: recurringExpenses,
-          filteredRecurringExpenses: _applyFilters(recurringExpenses),
-          monthlyTotal: monthlyTotal,
-          isLoading: false,
-          hasLoaded: true,
-        ),
-      );
-    } catch (error) {
-      emit(
-        state.copyWith(
-          allRecurringExpenses: const [],
-          filteredRecurringExpenses: const [],
-          monthlyTotal: 0.0,
-          isLoading: false,
-          error: 'Failed to load recurring expenses: $error',
-        ),
-      );
+      final list = await getRecurringExpensesUseCase(forceRefresh: false);
+      final total = _monthlyTotal(list);
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: list,
+        filteredRecurringExpenses: list,
+        monthlyTotal: total,
+      ));
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit loadRecurringExpenses error: $e');
+      emit(RecurringExpenseError(_messageFromError(e)));
     }
   }
 
-  /// Refresh recurring expenses - ALWAYS re-fetches data, ignoring hasLoaded guard
-  /// Used for manual refresh (pull-to-refresh)
-  /// This bypasses the initial-load guard to ensure refresh always works
   Future<void> refreshRecurringExpenses() async {
-    debugPrint(
-      '🔄 refreshRecurringExpenses - Force refreshing (ignoring hasLoaded)',
-    );
-
-    // Preserve current expenses before clearing (for error recovery)
-    final previousExpenses = state.allRecurringExpenses;
-    final previousMonthlyTotal = state.monthlyTotal;
-
-    // Set loading state (keep existing expenses visible during refresh)
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    emit(const RecurringExpenseLoading());
+    final previous = state.allRecurringExpenses;
     try {
-      _apiService.clearCache();
-      debugPrint('🔄 refreshRecurringExpenses - Fetching from API...');
-      final recurringExpenses = await _apiService.loadRecurringExpenses(
-        forceRefresh: true,
-      );
-      final monthlyTotal = await _apiService.calculateMonthlyRecurringTotal();
-
-      debugPrint(
-        '📊 refreshRecurringExpenses - API returned ${recurringExpenses.length} expenses',
-      );
-
-      final filteredExpenses = _applyFilters(recurringExpenses);
-
-      final newState = state.copyWith(
-        allRecurringExpenses: recurringExpenses,
-        filteredRecurringExpenses: filteredExpenses,
-        monthlyTotal: monthlyTotal,
-        isLoading: false,
-        hasLoaded: true,
-        clearError: true,
-      );
-
-      debugPrint(
-        '✅ refreshRecurringExpenses - Refresh complete: '
-        'allExpenses=${newState.allRecurringExpenses.length}, '
-        'filteredExpenses=${newState.filteredRecurringExpenses.length}',
-      );
-
-      emit(newState);
-    } catch (error) {
-      debugPrint('❌ refreshRecurringExpenses - Error: $error');
-      String errorMessage = 'Failed to refresh recurring expenses';
-
-      // Handle specific error types
-      if (error.toString().contains('ForbiddenException') ||
-          error.toString().contains('403')) {
-        errorMessage =
-            'You do not have permission to view recurring expenses. Please contact your administrator.';
-      } else if (error.toString().contains('UnauthorizedException') ||
-          error.toString().contains('401')) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to refresh recurring expenses: ${error.toString().replaceAll('Exception: ', '')}';
+      final list = await getRecurringExpensesUseCase(forceRefresh: true);
+      final total = _monthlyTotal(list);
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: list,
+        filteredRecurringExpenses: _applyFilters(list),
+        monthlyTotal: total,
+        selectedCategory: state is RecurringExpenseLoaded
+            ? (state as RecurringExpenseLoaded).selectedCategory
+            : null,
+        selectedStatus: state is RecurringExpenseLoaded
+            ? (state as RecurringExpenseLoaded).selectedStatus
+            : null,
+        selectedFrequency: state is RecurringExpenseLoaded
+            ? (state as RecurringExpenseLoaded).selectedFrequency
+            : null,
+      ));
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit refreshRecurringExpenses error: $e');
+      emit(RecurringExpenseError(_messageFromError(e)));
+      if (previous.isNotEmpty) {
+        emit(RecurringExpenseLoaded(
+          allRecurringExpenses: previous,
+          filteredRecurringExpenses: previous,
+          monthlyTotal: _monthlyTotal(previous),
+        ));
       }
-
-      // Ensure isLoading is always cleared on error to prevent stuck state
-      // Keep existing expenses on error (don't clear them)
-      emit(
-        state.copyWith(
-          isLoading: false,
-          error: errorMessage,
-          allRecurringExpenses: previousExpenses,
-          filteredRecurringExpenses: _applyFilters(previousExpenses),
-          monthlyTotal: previousMonthlyTotal,
-        ),
-      );
     }
   }
 
-  Future<void> addRecurringExpense(RecurringExpense expense) async {
-    // Optimistic update: Add expense immediately to state for instant UI feedback
-    final updatedExpenses = List<RecurringExpense>.from(
-      state.allRecurringExpenses,
-    );
-    updatedExpenses.add(expense);
-    // Sort by creation date or category (newest first)
-    updatedExpenses.sort((a, b) => b.category.compareTo(a.category));
-
-    final filteredExpenses = _applyFilters(updatedExpenses);
-
-    // Calculate monthly total with new expense
-    double newMonthlyTotal = state.monthlyTotal;
-    if (expense.isActive) {
-      switch (expense.recurrenceType) {
-        case RecurrenceType.daily:
-          newMonthlyTotal += expense.amount * 30;
-          break;
-        case RecurrenceType.weekly:
-          newMonthlyTotal += expense.amount * 4;
-          break;
-        case RecurrenceType.monthly:
-          newMonthlyTotal += expense.amount;
-          break;
-        case RecurrenceType.yearly:
-          newMonthlyTotal += expense.amount / 12;
-          break;
-      }
-    }
-
-    // Update state immediately with the new expense
-    emit(
-      state.copyWith(
-        allRecurringExpenses: updatedExpenses,
-        filteredRecurringExpenses: filteredExpenses,
-        monthlyTotal: newMonthlyTotal,
-        clearError: true,
-      ),
-    );
-
-    debugPrint('✅ Recurring expense added optimistically to UI: ${expense.id}');
+  Future<void> addRecurringExpense(RecurringExpenseEntity entity) async {
+    final prev = state is RecurringExpenseLoaded ? state as RecurringExpenseLoaded : null;
+    final list = List<RecurringExpenseEntity>.from(state.allRecurringExpenses)..add(entity);
+    final total = _monthlyTotal(list);
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: list,
+      filteredRecurringExpenses: _applyFilters(list, existing: prev),
+      monthlyTotal: total,
+      selectedCategory: prev?.selectedCategory,
+      selectedStatus: prev?.selectedStatus,
+      selectedFrequency: prev?.selectedFrequency,
+    ));
 
     try {
-      debugPrint('💰 Creating recurring expense via API...');
-
-      // Create expense via API (get server response with real ID if needed)
-      final createdExpense = await _apiService.createRecurringExpense(expense);
-
-      debugPrint(
-        '✅ Recurring expense created successfully in API: ${createdExpense.id}',
-      );
-
-      // If server returned a different ID, update the expense in state
-      // Otherwise, the optimistic update already has the correct expense
-      if (createdExpense.id != expense.id) {
-        final serverUpdatedExpenses = List<RecurringExpense>.from(
-          state.allRecurringExpenses,
-        );
-        final index = serverUpdatedExpenses.indexWhere(
-          (e) => e.id == expense.id,
-        );
-        if (index != -1) {
-          serverUpdatedExpenses[index] = createdExpense;
-          serverUpdatedExpenses.sort(
-            (a, b) => b.category.compareTo(a.category),
-          );
-          final filteredExpenses = _applyFilters(serverUpdatedExpenses);
-
-          // Recalculate monthly total with server data
-          final serverMonthlyTotal =
-              await _apiService.calculateMonthlyRecurringTotal();
-
-          emit(
-            state.copyWith(
-              allRecurringExpenses: serverUpdatedExpenses,
-              filteredRecurringExpenses: filteredExpenses,
-              monthlyTotal: serverMonthlyTotal,
-            ),
-          );
-        }
-      } else {
-        // Recalculate monthly total to ensure accuracy
-        final serverMonthlyTotal =
-            await _apiService.calculateMonthlyRecurringTotal();
-        emit(state.copyWith(monthlyTotal: serverMonthlyTotal));
-      }
-
-      // No need to reload - expense already in state via optimistic update
-    } catch (error) {
-      debugPrint('❌ خطأ في إضافة المصروف المتكرر: $error');
-
-      // Rollback: Remove the optimistically added expense on error
-      final rolledBackExpenses = List<RecurringExpense>.from(
-        state.allRecurringExpenses,
-      )..removeWhere((e) => e.id == expense.id);
-      rolledBackExpenses.sort((a, b) => b.category.compareTo(a.category));
-      final filteredExpenses = _applyFilters(rolledBackExpenses);
-
-      // Restore original monthly total (recalculate from rolled back expenses)
-      double rolledBackMonthlyTotal = 0.0;
-      for (final exp in rolledBackExpenses.where((e) => e.isActive)) {
-        switch (exp.recurrenceType) {
-          case RecurrenceType.daily:
-            rolledBackMonthlyTotal += exp.amount * 30;
-            break;
-          case RecurrenceType.weekly:
-            rolledBackMonthlyTotal += exp.amount * 4;
-            break;
-          case RecurrenceType.monthly:
-            rolledBackMonthlyTotal += exp.amount;
-            break;
-          case RecurrenceType.yearly:
-            rolledBackMonthlyTotal += exp.amount / 12;
-            break;
-        }
-      }
-
-      String errorMessage = 'Failed to add recurring expense';
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to add recurring expense: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(
-        state.copyWith(
-          allRecurringExpenses: rolledBackExpenses,
-          filteredRecurringExpenses: filteredExpenses,
-          monthlyTotal: rolledBackMonthlyTotal,
-          error: errorMessage,
-        ),
-      );
+      final created = await createRecurringExpenseUseCase(entity);
+      final updated = list.map((e) => e.id == entity.id ? created : e).toList();
+      final newTotal = _monthlyTotal(updated);
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: updated,
+        filteredRecurringExpenses: _applyFilters(updated, existing: prev),
+        monthlyTotal: newTotal,
+        selectedCategory: prev?.selectedCategory,
+        selectedStatus: prev?.selectedStatus,
+        selectedFrequency: prev?.selectedFrequency,
+      ));
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit addRecurringExpense error: $e');
+      final rolledBack = list.where((x) => x.id != entity.id).toList();
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: rolledBack,
+        filteredRecurringExpenses: _applyFilters(rolledBack, existing: prev),
+        monthlyTotal: _monthlyTotal(rolledBack),
+        selectedCategory: prev?.selectedCategory,
+        selectedStatus: prev?.selectedStatus,
+        selectedFrequency: prev?.selectedFrequency,
+        lastError: _messageFromError(e),
+      ));
     }
   }
 
-  Future<void> updateRecurringExpense(RecurringExpense expense) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> updateRecurringExpense(RecurringExpenseEntity entity) async {
+    final prev = state is RecurringExpenseLoaded ? state as RecurringExpenseLoaded : null;
+    emit(const RecurringExpenseLoading());
     try {
-      // Send full expense object to API for complete update
-      await _apiService.updateRecurringExpense(expense);
-
-      // Reload all recurring expenses
-      loadRecurringExpenses();
-    } catch (error) {
-      emit(
-        state.copyWith(
-          isLoading: false,
-          error: 'Failed to update recurring expense: $error',
-        ),
-      );
+      final updated = await updateRecurringExpenseUseCase(entity);
+      final list = prev?.allRecurringExpenses ?? [];
+      final newList = list.map((e) => e.id == entity.id ? updated : e).toList();
+      final total = _monthlyTotal(newList);
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: newList,
+        filteredRecurringExpenses: _applyFilters(newList, existing: prev),
+        monthlyTotal: total,
+        selectedCategory: prev?.selectedCategory,
+        selectedStatus: prev?.selectedStatus,
+        selectedFrequency: prev?.selectedFrequency,
+      ));
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit updateRecurringExpense error: $e');
+      if (prev != null) {
+        emit(prev);
+      }
+      emit(RecurringExpenseError(_messageFromError(e)));
     }
   }
 
-  Future<void> deleteRecurringExpense(String expenseId) async {
-    // Find the expense to be deleted (for rollback if needed)
-    final expenseToDelete = state.allRecurringExpenses.firstWhere(
-      (e) => e.id == expenseId,
-      orElse: () => throw StateError('Recurring expense not found: $expenseId'),
+  Future<void> deleteRecurringExpense(String id) async {
+    final prev = state is RecurringExpenseLoaded ? state as RecurringExpenseLoaded : null;
+    final toDelete = state.allRecurringExpenses.firstWhere(
+      (e) => e.id == id,
+      orElse: () => throw StateError('Recurring expense not found: $id'),
     );
-
-    // Optimistic update: Remove expense immediately from state for instant UI feedback
-    final updatedExpenses = List<RecurringExpense>.from(
-      state.allRecurringExpenses,
-    )..removeWhere((e) => e.id == expenseId);
-
-    // Sort by category (same as add)
-    updatedExpenses.sort((a, b) => b.category.compareTo(a.category));
-
-    final filteredExpenses = _applyFilters(updatedExpenses);
-
-    // Calculate monthly total without deleted expense
-    double newMonthlyTotal = state.monthlyTotal;
-    if (expenseToDelete.isActive) {
-      switch (expenseToDelete.recurrenceType) {
-        case RecurrenceType.daily:
-          newMonthlyTotal -= expenseToDelete.amount * 30;
-          break;
-        case RecurrenceType.weekly:
-          newMonthlyTotal -= expenseToDelete.amount * 4;
-          break;
-        case RecurrenceType.monthly:
-          newMonthlyTotal -= expenseToDelete.amount;
-          break;
-        case RecurrenceType.yearly:
-          newMonthlyTotal -= expenseToDelete.amount / 12;
-          break;
-      }
-    }
-
-    // Update state immediately (remove expense)
-    emit(
-      state.copyWith(
-        allRecurringExpenses: updatedExpenses,
-        filteredRecurringExpenses: filteredExpenses,
-        monthlyTotal: newMonthlyTotal,
-        clearError: true,
-      ),
-    );
-
-    debugPrint(
-      '✅ Recurring expense removed optimistically from UI: $expenseId',
-    );
+    final list = state.allRecurringExpenses.where((e) => e.id != id).toList();
+    final total = _monthlyTotal(list);
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: list,
+      filteredRecurringExpenses: _applyFilters(list, existing: prev),
+      monthlyTotal: total,
+      selectedCategory: prev?.selectedCategory,
+      selectedStatus: prev?.selectedStatus,
+      selectedFrequency: prev?.selectedFrequency,
+    ));
 
     try {
-      debugPrint('🗑️ Deleting recurring expense via API: $expenseId');
-
-      // Delete expense via API
-      await _apiService.deleteRecurringExpense(expenseId);
-
-      debugPrint(
-        '✅ Recurring expense deleted successfully from API: $expenseId',
-      );
-
-      // No need to reload - expense already removed via optimistic update
-    } catch (error) {
-      debugPrint('❌ Error deleting recurring expense: $error');
-
-      // Rollback: Re-add the optimistically removed expense on error
-      final rolledBackExpenses = List<RecurringExpense>.from(
-        state.allRecurringExpenses,
-      );
-      rolledBackExpenses.add(expenseToDelete);
-      rolledBackExpenses.sort((a, b) => b.category.compareTo(a.category));
-      final filteredExpenses = _applyFilters(rolledBackExpenses);
-
-      // Restore original monthly total
-      double rolledBackMonthlyTotal = state.monthlyTotal;
-      if (expenseToDelete.isActive) {
-        switch (expenseToDelete.recurrenceType) {
-          case RecurrenceType.daily:
-            rolledBackMonthlyTotal += expenseToDelete.amount * 30;
-            break;
-          case RecurrenceType.weekly:
-            rolledBackMonthlyTotal += expenseToDelete.amount * 4;
-            break;
-          case RecurrenceType.monthly:
-            rolledBackMonthlyTotal += expenseToDelete.amount;
-            break;
-          case RecurrenceType.yearly:
-            rolledBackMonthlyTotal += expenseToDelete.amount / 12;
-            break;
-        }
-      }
-
-      String errorMessage = 'Failed to delete recurring expense';
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to delete recurring expense: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      // Rollback state: restore expense, restore monthly total, show error
-      emit(
-        state.copyWith(
-          allRecurringExpenses: rolledBackExpenses,
-          filteredRecurringExpenses: filteredExpenses,
-          monthlyTotal: rolledBackMonthlyTotal,
-          error: errorMessage,
-        ),
-      );
+      await deleteRecurringExpenseUseCase(id);
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit deleteRecurringExpense error: $e');
+      final rolledBack = List<RecurringExpenseEntity>.from(list)..add(toDelete);
+      emit(RecurringExpenseLoaded(
+        allRecurringExpenses: rolledBack,
+        filteredRecurringExpenses: _applyFilters(rolledBack, existing: prev),
+        monthlyTotal: _monthlyTotal(rolledBack),
+        selectedCategory: prev?.selectedCategory,
+        selectedStatus: prev?.selectedStatus,
+        selectedFrequency: prev?.selectedFrequency,
+        lastError: _messageFromError(e),
+      ));
     }
   }
 
-  Future<void> toggleRecurringExpense(String expenseId, bool isActive) async {
-    // Optimistic update for better UX
-    final updatedExpenses =
-        state.allRecurringExpenses.map((expense) {
-          if (expense.id == expenseId) {
-            return expense.copyWith(isActive: isActive);
-          }
-          return expense;
-        }).toList();
-
-    emit(
-      state.copyWith(
-        allRecurringExpenses: updatedExpenses,
-        filteredRecurringExpenses: _applyFilters(updatedExpenses),
-        clearError: true,
-      ),
+  Future<void> toggleRecurringExpense(String id, bool isActive) async {
+    final list = state.allRecurringExpenses;
+    final entity = list.firstWhere(
+      (e) => e.id == id,
+      orElse: () => throw StateError('Recurring expense not found: $id'),
     );
-
-    try {
-      await _apiService.toggleRecurringExpense(expenseId, isActive);
-
-      // Reload to get accurate monthly total
-      refreshRecurringExpenses();
-    } catch (error) {
-      // Revert optimistic update on error
-      loadRecurringExpenses();
-      emit(state.copyWith(error: 'Failed to toggle recurring expense: $error'));
-    }
+    await updateRecurringExpense(entity.copyWith(isActive: isActive));
   }
 
   void filterByCategory(String? category) {
-    final newState = state.copyWith(selectedCategory: category);
-    emit(
-      newState.copyWith(
-        filteredRecurringExpenses: _applyFilters(
-          state.allRecurringExpenses,
-          category: category,
-          status: state.selectedStatus,
-          frequency: state.selectedFrequency,
-        ),
+    final s = state;
+    if (s is! RecurringExpenseLoaded) return;
+    final loaded = s;
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: loaded.allRecurringExpenses,
+      filteredRecurringExpenses: _applyFilters(
+        loaded.allRecurringExpenses,
+        category: category,
+        status: loaded.selectedStatus,
+        frequency: loaded.selectedFrequency,
       ),
-    );
+      monthlyTotal: loaded.monthlyTotal,
+      selectedCategory: category,
+      selectedStatus: loaded.selectedStatus,
+      selectedFrequency: loaded.selectedFrequency,
+    ));
   }
 
   void filterByStatus(bool? isActive) {
-    final newState = state.copyWith(selectedStatus: isActive);
-    emit(
-      newState.copyWith(
-        filteredRecurringExpenses: _applyFilters(
-          state.allRecurringExpenses,
-          category: state.selectedCategory,
-          status: isActive,
-          frequency: state.selectedFrequency,
-        ),
+    final s = state;
+    if (s is! RecurringExpenseLoaded) return;
+    final loaded = s;
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: loaded.allRecurringExpenses,
+      filteredRecurringExpenses: _applyFilters(
+        loaded.allRecurringExpenses,
+        category: loaded.selectedCategory,
+        status: isActive,
+        frequency: loaded.selectedFrequency,
       ),
-    );
+      monthlyTotal: loaded.monthlyTotal,
+      selectedCategory: loaded.selectedCategory,
+      selectedStatus: isActive,
+      selectedFrequency: loaded.selectedFrequency,
+    ));
   }
 
   void filterByFrequency(RecurrenceType? frequency) {
-    final newState = state.copyWith(selectedFrequency: frequency);
-    emit(
-      newState.copyWith(
-        filteredRecurringExpenses: _applyFilters(
-          state.allRecurringExpenses,
-          category: state.selectedCategory,
-          status: state.selectedStatus,
-          frequency: frequency,
-        ),
+    final s = state;
+    if (s is! RecurringExpenseLoaded) return;
+    final loaded = s;
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: loaded.allRecurringExpenses,
+      filteredRecurringExpenses: _applyFilters(
+        loaded.allRecurringExpenses,
+        category: loaded.selectedCategory,
+        status: loaded.selectedStatus,
+        frequency: frequency,
       ),
-    );
+      monthlyTotal: loaded.monthlyTotal,
+      selectedCategory: loaded.selectedCategory,
+      selectedStatus: loaded.selectedStatus,
+      selectedFrequency: frequency,
+    ));
   }
 
   void clearFilters() {
-    emit(
-      state.copyWith(
-        clearSelectedCategory: true,
-        clearSelectedStatus: true,
-        clearSelectedFrequency: true,
-        filteredRecurringExpenses: state.allRecurringExpenses,
-      ),
-    );
+    final s = state;
+    if (s is! RecurringExpenseLoaded) return;
+    emit(RecurringExpenseLoaded(
+      allRecurringExpenses: s.allRecurringExpenses,
+      filteredRecurringExpenses: s.allRecurringExpenses,
+      monthlyTotal: s.monthlyTotal,
+    ));
   }
 
-  List<RecurringExpense> _applyFilters(
-    List<RecurringExpense> expenses, {
+  /// Enable reminder for a recurring expense (e.g. after user toggles on).
+  Future<void> enableReminder(String id) async {
+    try {
+      await enableReminderUseCase(id);
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit enableReminder error: $e');
+    }
+  }
+
+  /// Disable reminder for a recurring expense (e.g. after user toggles off).
+  Future<void> disableReminder(String id) async {
+    try {
+      await disableReminderUseCase(id);
+    } catch (e) {
+      debugPrint('RecurringExpenseCubit disableReminder error: $e');
+    }
+  }
+
+  List<RecurringExpenseEntity> _applyFilters(
+    List<RecurringExpenseEntity> expenses, {
     String? category,
     bool? status,
     RecurrenceType? frequency,
+    RecurringExpenseLoaded? existing,
   }) {
-    var filtered = List<RecurringExpense>.from(expenses);
-
-    // Use provided values or fall back to current state
-    final filterCategory = category ?? state.selectedCategory;
-    final filterStatus = status ?? state.selectedStatus;
-    final filterFrequency = frequency ?? state.selectedFrequency;
-
-    // Category filter
-    if (filterCategory != null) {
-      filtered =
-          filtered.where((expense) {
-            return expense.category == filterCategory;
-          }).toList();
-    }
-
-    // Status filter
-    if (filterStatus != null) {
-      filtered =
-          filtered.where((expense) {
-            return expense.isActive == filterStatus;
-          }).toList();
-    }
-
-    // Frequency filter
-    if (filterFrequency != null) {
-      filtered =
-          filtered.where((expense) {
-            return expense.recurrenceType == filterFrequency;
-          }).toList();
-    }
-
+    var filtered = List<RecurringExpenseEntity>.from(expenses);
+    final c = category ?? existing?.selectedCategory;
+    final s = status ?? existing?.selectedStatus;
+    final f = frequency ?? existing?.selectedFrequency;
+    if (c != null) filtered = filtered.where((e) => e.category == c).toList();
+    if (s != null) filtered = filtered.where((e) => e.isActive == s).toList();
+    if (f != null) filtered = filtered.where((e) => e.recurrenceType == f).toList();
     return filtered;
-  }
-
-  // Helper method to get summary for dashboard
-  Map<String, dynamic> getSummary() {
-    return {
-      'totalActive': state.totalActiveRecurringExpenses,
-      'totalInactive': state.totalInactiveRecurringExpenses,
-      'monthlyTotal': state.monthlyTotal,
-      'yearlyTotal': state.totalYearlyRecurringAmount,
-    };
   }
 }

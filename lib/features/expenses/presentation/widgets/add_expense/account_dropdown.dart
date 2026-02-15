@@ -1,10 +1,11 @@
 // Add Expense - Account Dropdown Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/presentation/utils/account_type_display.dart';
 
 class AccountDropdown extends StatelessWidget {
   final String? selectedAccountId;
-  final List<Account> accounts;
+  final List<AccountEntity> accounts;
   final bool isRTL;
   final Function(String?) onChanged;
 
@@ -46,7 +47,7 @@ class AccountDropdown extends StatelessWidget {
     // Remove duplicates
     final uniqueAccounts =
         accounts
-            .fold<Map<String, Account>>({}, (map, account) {
+            .fold<Map<String, AccountEntity>>({}, (map, account) {
               map[account.id] = account;
               return map;
             })
@@ -68,7 +69,7 @@ class AccountDropdown extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(account.icon, size: 20),
+                  Icon(account.type.icon, size: 20),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(

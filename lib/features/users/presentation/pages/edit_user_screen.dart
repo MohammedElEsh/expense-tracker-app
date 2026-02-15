@@ -1,14 +1,18 @@
-// ✅ Edit User Screen - Form for editing user details (Owner only)
+// ✅ Edit User Screen - Uses UserCubit only (no service/API access).
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
+import 'package:expense_tracker/features/users/presentation/utils/user_role_display.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 
 /// Edit User Screen - Allows Owner to edit user name and role
 class EditUserScreen extends StatefulWidget {
-  final Map<String, dynamic> user;
+  final UserEntity userEntity;
 
-  const EditUserScreen({super.key, required this.user});
+  const EditUserScreen({super.key, required this.userEntity});
 
   @override
   State<EditUserScreen> createState() => _EditUserScreenState();
@@ -23,18 +27,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
   @override
   void initState() {
     super.initState();
-    final userName = widget.user['name']?.toString() ?? '';
-    final roleString = widget.user['role']?.toString() ?? 'employee';
-    _nameController = TextEditingController(text: userName);
-    _selectedRole = UserRole.values.firstWhere(
-      (r) => r.name == roleString,
-      orElse: () => UserRole.employee,
-    );
-
-    // Don't allow editing owner role
-    if (_selectedRole == UserRole.owner) {
-      // Keep owner role, but don't allow changing it
-    }
+    _nameController = TextEditingController(text: widget.userEntity.name);
+    _selectedRole = widget.userEntity.role;
   }
 
   @override
@@ -49,8 +43,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
     }
 
     final isRTL = Directionality.of(context) == TextDirection.rtl;
-    final userId =
-        widget.user['_id']?.toString() ?? widget.user['id']?.toString() ?? '';
+    final userId = widget.userEntity.id;
 
     if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,14 +62,9 @@ class _EditUserScreenState extends State<EditUserScreen> {
     });
 
     try {
-      // Don't allow changing owner role
-      UserRole? roleToUpdate = _selectedRole;
-      if (_selectedRole == UserRole.owner) {
-        // If current role is owner, don't update role
-        roleToUpdate = null;
-      }
+      UserRole? roleToUpdate = _selectedRole == UserRole.owner ? null : _selectedRole;
 
-      await serviceLocator.userApiService.updateUser(
+      await context.read<UserCubit>().updateUserFromApi(
         userId: userId,
         name: _nameController.text.trim(),
         role: roleToUpdate,
@@ -91,7 +79,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        context.pop(true);
       }
     } catch (e) {
       debugPrint('❌ Error updating user: $e');
@@ -130,9 +118,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
   Widget build(BuildContext context) {
     final isRTL = Directionality.of(context) == TextDirection.rtl;
     final theme = Theme.of(context);
-    final userEmail = widget.user['email']?.toString() ?? '';
-    final currentRoleString = widget.user['role']?.toString() ?? 'employee';
-    final isOwner = currentRoleString == 'owner';
+    final userEmail = widget.userEntity.email;
+    final isOwner = widget.userEntity.role == UserRole.owner;
 
     return Scaffold(
       appBar: AppBar(
@@ -239,7 +226,6 @@ class _EditUserScreenState extends State<EditUserScreen> {
                   ),
                 ),
 
-              // Role Options (employee, accountant, auditor - owner not available for editing)
               ...UserRole.values
                   .where((role) => role != UserRole.owner)
                   .map(
@@ -250,20 +236,12 @@ class _EditUserScreenState extends State<EditUserScreen> {
                         style: theme.textTheme.bodySmall,
                       ),
                       value: role,
-                      groupValue:
-                          _selectedRole == UserRole.owner
-                              ? UserRole.employee
-                              : _selectedRole,
-                      onChanged:
-                          isOwner
-                              ? null
-                              : (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedRole = value;
-                                  });
-                                }
-                              },
+                      groupValue: _selectedRole == UserRole.owner ? UserRole.employee : _selectedRole,
+                      onChanged: isOwner
+                          ? null
+                          : (value) {
+                              if (value != null) setState(() => _selectedRole = value);
+                            },
                       secondary: Icon(role.icon, color: role.color),
                     ),
                   ),

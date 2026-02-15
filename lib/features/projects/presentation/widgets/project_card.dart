@@ -1,12 +1,13 @@
-// ✅ Clean Architecture - Project Card Widget
+// ✅ Clean Architecture - Project Card Widget (domain ProjectEntity only)
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/presentation/utils/project_display_helper.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class ProjectCard extends StatelessWidget {
-  final Project project;
+  final ProjectEntity project;
   final bool isRTL;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -58,7 +59,7 @@ class ProjectCard extends StatelessWidget {
                         ),
                         const SizedBox(width: AppSpacing.xxs),
                         Text(
-                          project.status.getDisplayName(isRTL),
+                          project.status.displayName(isRTL),
                           style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: project.status.color,

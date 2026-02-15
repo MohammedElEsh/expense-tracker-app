@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
+import 'package:expense_tracker/features/users/presentation/utils/user_role_display.dart';
 import 'package:expense_tracker/features/users/presentation/widgets/user_role_badge.dart';
 
 class UserCard extends StatelessWidget {
@@ -12,7 +14,7 @@ class UserCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  final Map<String, dynamic> user;
+  final UserEntity user;
   final bool isRTL;
   final bool canManage;
   final VoidCallback onEdit;
@@ -21,33 +23,17 @@ class UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final userName = user['name']?.toString() ?? '';
-    final userEmail = user['email']?.toString() ?? '';
-    final roleString = user['role']?.toString() ?? 'employee';
-    final isActive = user['isActive'] ?? true;
-
-    final role = UserRole.values.firstWhere(
-      (r) => r.name == roleString,
-      orElse: () => UserRole.employee,
-    );
-
+    final role = user.role;
     final isOwner = role == UserRole.owner;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color:
-            isActive
-                ? (isOwner
-                    ? role.color.withOpacity(0.05)
-                    : Theme.of(context).cardColor)
-                : Colors.grey.shade200,
+        color: user.isActive
+            ? (isOwner ? role.color.withOpacity(0.05) : Theme.of(context).cardColor)
+            : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(12),
-        border:
-            isOwner
-                ? Border.all(color: role.color.withOpacity(0.5), width: 2)
-                : null,
+        border: isOwner ? Border.all(color: role.color.withOpacity(0.5), width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(isOwner ? 0.15 : 0.08),
@@ -65,19 +51,16 @@ class UserCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Avatar
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: role.color.withOpacity(isActive ? 0.2 : 0.1),
+                  backgroundColor: role.color.withOpacity(user.isActive ? 0.2 : 0.1),
                   child: Icon(
                     role.icon,
-                    color: isActive ? role.color : Colors.grey,
+                    color: user.isActive ? role.color : Colors.grey,
                     size: 28,
                   ),
                 ),
                 const SizedBox(width: 16),
-
-                // User Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,38 +69,32 @@ class UserCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              userName,
+                              user.name,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: isActive ? null : Colors.grey,
-                                decoration:
-                                    isActive
-                                        ? null
-                                        : TextDecoration.lineThrough,
+                                color: user.isActive ? null : Colors.grey,
+                                decoration: user.isActive ? null : TextDecoration.lineThrough,
                               ),
                             ),
                           ),
                           UserRoleBadge(
                             role: role,
                             isRTL: isRTL,
-                            isActive: isActive,
+                            isActive: user.isActive,
                             isOwner: isOwner,
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        userEmail,
+                        user.email,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isActive ? null : Colors.grey,
+                          color: user.isActive ? null : Colors.grey,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: role.color.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -134,47 +111,34 @@ class UserCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Actions - Hide for Owner
                 if (canManage && !isOwner)
                   PopupMenuButton<String>(
                     onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        onDelete();
-                      }
+                      if (value == 'edit') onEdit();
+                      if (value == 'delete') onDelete();
                     },
-                    itemBuilder:
-                        (context) => [
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.edit, size: 20),
-                                const SizedBox(width: 8),
-                                Text(isRTL ? 'تعديل' : 'Edit'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.delete,
-                                  size: 20,
-                                  color: Colors.red,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  isRTL ? 'حذف' : 'Delete',
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit, size: 20),
+                            const SizedBox(width: 8),
+                            Text(isRTL ? 'تعديل' : 'Edit'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete, size: 20, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Text(isRTL ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
               ],
             ),

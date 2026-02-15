@@ -1,16 +1,21 @@
-// ✅ Clean Architecture - Vendors Screen (Refactored)
+// Clean Architecture - Vendors Screen (Cubit only)
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
+
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_status.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_type.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_card.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/vendor_dialog.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
-import 'package:expense_tracker/features/vendors/presentation/pages/vendor_details_screen.dart';
 import 'package:expense_tracker/features/vendors/presentation/widgets/list/vendors_search_filter.dart';
 
 class VendorsScreen extends StatefulWidget {
@@ -20,24 +25,15 @@ class VendorsScreen extends StatefulWidget {
   State<VendorsScreen> createState() => _VendorsScreenState();
 }
 
-class _VendorsScreenState extends State<VendorsScreen>
-    with TickerProviderStateMixin {
+class _VendorsScreenState extends State<VendorsScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-
-  List<Vendor> _allVendors = [];
-  List<Vendor> _filteredVendors = [];
-  Map<String, dynamic>? _statistics;
-  bool _isLoading = true;
-  String _searchQuery = '';
-  VendorType? _selectedType;
-  VendorStatus? _selectedStatus;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 7, vsync: this);
-    _loadVendors();
+    context.read<VendorCubit>().loadVendors();
   }
 
   @override
@@ -47,147 +43,64 @@ class _VendorsScreenState extends State<VendorsScreen>
     super.dispose();
   }
 
-  Future<void> _loadVendors() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final vendorService = serviceLocator.vendorService;
-      final vendors = await vendorService.getAllVendors();
-      final statistics = await vendorService.getVendorsStatistics();
-
-      setState(() {
-        _allVendors = vendors;
-        _filteredVendors = vendors;
-        _statistics = statistics;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('خطأ في تحميل الموردين: $e')));
-      }
-    }
-  }
-
-  void _filterVendors() {
-    setState(() {
-      _filteredVendors =
-          _allVendors.where((vendor) {
-            final matchesSearch =
-                _searchQuery.isEmpty ||
-                vendor.name.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                (vendor.companyName?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false) ||
-                (vendor.email?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false) ||
-                (vendor.phone?.contains(_searchQuery) ?? false);
-
-            final matchesType =
-                _selectedType == null || vendor.type == _selectedType;
-            final matchesStatus =
-                _selectedStatus == null || vendor.status == _selectedStatus;
-
-            return matchesSearch && matchesType && matchesStatus;
-          }).toList();
-    });
-  }
-
-  void _onSearchChanged(String query) {
-    setState(() => _searchQuery = query);
-    _filterVendors();
-  }
-
-  void _onTypeFilterChanged(VendorType? type) {
-    setState(() => _selectedType = type);
-    _filterVendors();
-  }
-
-  void _onStatusFilterChanged(VendorStatus? status) {
-    setState(() => _selectedStatus = status);
-    _filterVendors();
-  }
-
-  Future<void> _showVendorDialog({Vendor? vendor}) async {
+  Future<void> _showVendorDialog({VendorEntity? vendor}) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => VendorDialog(vendor: vendor),
     );
 
-    if (result == true) {
-      await _loadVendors();
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            vendor == null
+                ? (context.read<SettingsCubit>().state.language == 'ar' ? 'تم إضافة المورد بنجاح' : 'Vendor added successfully')
+                : (context.read<SettingsCubit>().state.language == 'ar' ? 'تم تحديث المورد بنجاح' : 'Vendor updated successfully'),
+          ),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
+  Future<void> _deleteVendor(VendorEntity vendor) async {
+    final isRTL = context.read<SettingsCubit>().state.language == 'ar';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تأكيد الحذف' : 'Confirm Delete'),
+        content: Text(
+          '${isRTL ? "هل أنت متأكد من حذف المورد" : "Are you sure you want to delete vendor"} "${vendor.displayName}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => context.pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(isRTL ? 'حذف' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<VendorCubit>().deleteVendor(vendor.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              vendor == null
-                  ? 'تم إضافة المورد بنجاح'
-                  : 'تم تحديث المورد بنجاح',
-            ),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 2),
-          ),
+          SnackBar(content: Text(isRTL ? 'تم حذف المورد بنجاح' : 'Vendor deleted successfully')),
         );
       }
     }
   }
 
-  Future<void> _deleteVendor(Vendor vendor) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: Text(
-              'هل أنت متأكد من حذف المورد "${vendor.displayName}"؟',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                child: const Text('حذف'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        final vendorService = serviceLocator.vendorService;
-        await vendorService.deleteVendor(vendor.id);
-        await _loadVendors();
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('تم حذف المورد بنجاح')));
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('خطأ في حذف المورد: $e')));
-        }
-      }
-    }
-  }
-
-  void _navigateToVendorDetails(Vendor vendor) {
-    Navigator.push(
-      context,
-      AnimatedPageRoute(child: VendorDetailsScreen(vendor: vendor)),
-    );
+  void _navigateToVendorDetails(VendorEntity vendor) {
+    context.push(AppRoutes.vendorDetails, extra: vendor).then((_) {
+      if (mounted) context.read<VendorCubit>().loadVendors();
+    });
   }
 
   @override
@@ -196,133 +109,140 @@ class _VendorsScreenState extends State<VendorsScreen>
       builder: (context, settings) {
         final isRTL = settings.language == 'ar';
 
-        return Directionality(
-          textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                isRTL ? 'إدارة الموردين' : 'Vendor Management',
-                style: AppTypography.headlineMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _loadVendors,
-                ),
-              ],
-              bottom: TabBar(
-                controller: _tabController,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                isScrollable: true,
-                tabs: [
-                  Tab(
-                    icon: const Icon(Icons.list),
-                    text: isRTL ? 'الكل' : 'All',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.inventory),
-                    text: isRTL ? 'موردين' : 'Suppliers',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.build),
-                    text: isRTL ? 'خدمات' : 'Services',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.construction),
-                    text: isRTL ? 'مقاولين' : 'Contractors',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.psychology),
-                    text: isRTL ? 'استشاريين' : 'Consultants',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.check_circle),
-                    text: isRTL ? 'نشط' : 'Active',
-                  ),
-                  Tab(
-                    icon: const Icon(Icons.analytics),
-                    text: isRTL ? 'إحصائيات' : 'Statistics',
-                  ),
-                ],
-              ),
-            ),
-            body:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildAllVendorsTab(isRTL),
-                        _buildVendorsByType(VendorType.supplier, isRTL),
-                        _buildVendorsByType(VendorType.serviceProvider, isRTL),
-                        _buildVendorsByType(VendorType.contractor, isRTL),
-                        _buildVendorsByType(VendorType.consultant, isRTL),
-                        _buildVendorsByStatus(VendorStatus.active, isRTL),
-                        _buildStatisticsTab(isRTL),
-                      ],
+        return BlocConsumer<VendorCubit, VendorState>(
+          listener: (context, state) {
+            if (state is VendorError && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+              );
+            }
+          },
+          builder: (context, state) {
+            return Directionality(
+              textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+              child: Scaffold(
+                appBar: AppBar(
+                  title: Text(
+                    isRTL ? 'إدارة الموردين' : 'Vendor Management',
+                    style: AppTypography.headlineMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () => _showVendorDialog(),
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-          ),
+                  ),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: state is VendorLoading ? null : () => context.read<VendorCubit>().loadVendors(),
+                    ),
+                  ],
+                  bottom: TabBar(
+                    controller: _tabController,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white70,
+                    isScrollable: true,
+                    tabs: [
+                      Tab(icon: const Icon(Icons.list), text: isRTL ? 'الكل' : 'All'),
+                      Tab(icon: const Icon(Icons.inventory), text: isRTL ? 'موردين' : 'Suppliers'),
+                      Tab(icon: const Icon(Icons.build), text: isRTL ? 'خدمات' : 'Services'),
+                      Tab(icon: const Icon(Icons.construction), text: isRTL ? 'مقاولين' : 'Contractors'),
+                      Tab(icon: const Icon(Icons.psychology), text: isRTL ? 'استشاريين' : 'Consultants'),
+                      Tab(icon: const Icon(Icons.check_circle), text: isRTL ? 'نشط' : 'Active'),
+                      Tab(icon: const Icon(Icons.analytics), text: isRTL ? 'إحصائيات' : 'Statistics'),
+                    ],
+                  ),
+                ),
+                body: state is VendorLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state is VendorError
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                                const SizedBox(height: AppSpacing.md),
+                                Text(
+                                  state.message,
+                                  style: AppTypography.titleMedium.copyWith(color: AppColors.error),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: AppSpacing.lg),
+                                ElevatedButton.icon(
+                                  onPressed: () => context.read<VendorCubit>().loadVendors(),
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(isRTL ? 'إعادة المحاولة' : 'Retry'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildAllVendorsTab(state, isRTL),
+                              _buildVendorsByType(state, VendorType.supplier, isRTL),
+                              _buildVendorsByType(state, VendorType.serviceProvider, isRTL),
+                              _buildVendorsByType(state, VendorType.contractor, isRTL),
+                              _buildVendorsByType(state, VendorType.consultant, isRTL),
+                              _buildVendorsByStatus(state, VendorStatus.active, isRTL),
+                              _buildStatisticsTab(state, isRTL),
+                            ],
+                          ),
+                floatingActionButton: FloatingActionButton(
+                  onPressed: () => _showVendorDialog(),
+                  backgroundColor: AppColors.primary,
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildAllVendorsTab(bool isRTL) {
+  Widget _buildAllVendorsTab(VendorState state, bool isRTL) {
+    if (state is! VendorLoaded) return const Center(child: CircularProgressIndicator());
     return Column(
       children: [
         VendorsSearchFilter(
           searchController: _searchController,
-          searchQuery: _searchQuery,
-          selectedType: _selectedType,
-          selectedStatus: _selectedStatus,
-          onSearchChanged: _onSearchChanged,
-          onTypeChanged: _onTypeFilterChanged,
-          onStatusChanged: _onStatusFilterChanged,
+          searchQuery: state.searchQuery ?? '',
+          selectedType: state.selectedType,
+          selectedStatus: state.selectedStatus,
+          onSearchChanged: (q) => context.read<VendorCubit>().searchVendors(q),
+          onTypeChanged: (t) => context.read<VendorCubit>().filterByType(t),
+          onStatusChanged: (s) => context.read<VendorCubit>().filterByStatus(s),
           isRTL: isRTL,
         ),
-        Expanded(child: _buildVendorsList(_filteredVendors, isRTL)),
+        Expanded(child: _buildVendorsList(state.filteredVendors, isRTL)),
       ],
     );
   }
 
-  Widget _buildVendorsByType(VendorType type, bool isRTL) {
-    final vendors = _allVendors.where((v) => v.type == type).toList();
+  Widget _buildVendorsByType(VendorState state, VendorType type, bool isRTL) {
+    if (state is! VendorLoaded) return const Center(child: CircularProgressIndicator());
+    final vendors = state.vendors.where((v) => v.type == type).toList();
     return _buildVendorsList(vendors, isRTL);
   }
 
-  Widget _buildVendorsByStatus(VendorStatus status, bool isRTL) {
-    final vendors = _allVendors.where((v) => v.status == status).toList();
+  Widget _buildVendorsByStatus(VendorState state, VendorStatus status, bool isRTL) {
+    if (state is! VendorLoaded) return const Center(child: CircularProgressIndicator());
+    final vendors = state.vendors.where((v) => v.status == status).toList();
     return _buildVendorsList(vendors, isRTL);
   }
 
-  Widget _buildVendorsList(List<Vendor> vendors, bool isRTL) {
+  Widget _buildVendorsList(List<VendorEntity> vendors, bool isRTL) {
     if (vendors.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.store_outlined,
-              size: 64,
-              color: AppColors.textDisabledLight,
-            ),
+            const Icon(Icons.store_outlined, size: 64, color: AppColors.textDisabledLight),
             const SizedBox(height: AppSpacing.md),
             Text(
               isRTL ? 'لا يوجد موردين' : 'No vendors',
-              style: AppTypography.titleMedium.copyWith(
-                color: AppColors.textSecondaryLight,
-              ),
+              style: AppTypography.titleMedium.copyWith(color: AppColors.textSecondaryLight),
             ),
           ],
         ),
@@ -344,24 +264,22 @@ class _VendorsScreenState extends State<VendorsScreen>
     );
   }
 
-  Widget _buildStatisticsTab(bool isRTL) {
-    if (_statistics == null) {
+  Widget _buildStatisticsTab(VendorState state, bool isRTL) {
+    if (state is! VendorLoaded || state.statistics == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
+    final stats = state.statistics!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
           Text(
             isRTL ? 'إحصائيات الموردين' : 'Vendor Statistics',
-            style: AppTypography.displaySmall.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTypography.displaySmall.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
-            '${_statistics!['totalVendors'] ?? 0} ${isRTL ? "مورد" : "vendors"}',
+            '${stats['totalVendors'] ?? 0} ${isRTL ? "مورد" : "vendors"}',
             style: AppTypography.headlineSmall,
           ),
         ],

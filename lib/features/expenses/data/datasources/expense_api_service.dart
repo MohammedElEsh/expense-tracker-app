@@ -1,24 +1,21 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/network/api_service.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense_statistics.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'package:dio/dio.dart';
 
-// =============================================================================
-// EXPENSE API SERVICE - Clean Architecture Remote Data Source
-// =============================================================================
-
-/// Remote data source for expenses using REST API
-/// Uses core services: ApiService
-/// No Firebase dependencies - pure REST API implementation
 class ExpenseApiService {
   final ApiService _apiService;
+  final AppContext _appContext;
 
-  ExpenseApiService({required ApiService apiService})
-    : _apiService = apiService;
+  ExpenseApiService({
+    required ApiService apiService,
+    required AppContext appContext,
+  })  : _apiService = apiService,
+        _appContext = appContext;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -45,8 +42,8 @@ class ExpenseApiService {
     int? limit,
   }) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('🔍 getExpenses - Mode: $currentAppMode, Company: $companyId');
 

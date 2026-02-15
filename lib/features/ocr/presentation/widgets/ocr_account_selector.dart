@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
+import 'package:expense_tracker/features/accounts/presentation/utils/account_type_display.dart';
 
 class OcrAccountSelector extends StatelessWidget {
   const OcrAccountSelector({
@@ -81,7 +82,7 @@ class OcrAccountSelector extends StatelessWidget {
                     value: account.id,
                     child: Row(
                       children: [
-                        Icon(account.icon, size: 20),
+                        Icon(account.type.icon, size: 20),
                         const SizedBox(width: 12),
                         Text(account.name),
                       ],

@@ -1,24 +1,21 @@
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/network/api_service.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/budgets/data/models/budget.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 
-// =============================================================================
-// BUDGET SERVICE - Clean Architecture Remote Data Source
-// =============================================================================
-
-/// Remote data source for budgets using REST API
-/// Uses core services: ApiService
-/// No Firebase dependencies - pure REST API implementation
 class BudgetService {
   final ApiService _apiService;
+  final AppContext _appContext;
 
-  // Cache for budgets by month/year
   Map<String, List<Budget>>? _cachedBudgets;
 
-  BudgetService({required ApiService apiService}) : _apiService = apiService;
+  BudgetService({
+    required ApiService apiService,
+    required AppContext appContext,
+  })  : _apiService = apiService,
+        _appContext = appContext;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -44,17 +41,15 @@ class BudgetService {
     required int year,
   }) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint(
         '🔍 loadBudgets - Month: $month, Year: $year, Mode: $currentAppMode',
       );
 
-      // Build query parameters
       final Map<String, dynamic> queryParams = {'month': month, 'year': year};
 
-      // Add company ID for business mode
       if (currentAppMode == AppMode.business && companyId != null) {
         queryParams['companyId'] = companyId;
       }
@@ -141,12 +136,11 @@ class BudgetService {
     required int year,
   }) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('➕ Creating/Updating budget: $category for $month/$year');
 
-      // Build request body
       final Map<String, dynamic> requestBody = {
         'category': category,
         'limit': limit,
@@ -154,7 +148,6 @@ class BudgetService {
         'year': year,
       };
 
-      // Add company ID for business mode
       if (currentAppMode == AppMode.business && companyId != null) {
         requestBody['companyId'] = companyId;
       }

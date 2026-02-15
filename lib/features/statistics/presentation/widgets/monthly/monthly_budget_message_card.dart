@@ -1,34 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/budgets/presentation/cubit/budget_cubit.dart';
-import 'package:expense_tracker/features/budgets/presentation/cubit/budget_state.dart';
-import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 
+/// Shows budget message from StatisticsCubit state (budgetCountForMonth).
+/// No direct Cubit/service access.
 class MonthlyBudgetMessageCard extends StatelessWidget {
-  final DateTime selectedMonth;
+  final int budgetCountForMonth;
   final bool isRTL;
 
   const MonthlyBudgetMessageCard({
     super.key,
-    required this.selectedMonth,
+    required this.budgetCountForMonth,
     required this.isRTL,
   });
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BudgetCubit, BudgetState>(
-      builder: (context, budgetState) {
-        final monthBudgets =
-            budgetState.allBudgets.where((budget) {
-              return budget.month == selectedMonth.month &&
-                  budget.year == selectedMonth.year;
-            }).toList();
+    final hasBudgets = budgetCountForMonth > 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        final hasBudgets = monthBudgets.isNotEmpty;
-
-        final isDark = BlocProvider.of<SettingsCubit>(context).state.isDarkMode;
-
-        return Container(
+    return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -72,8 +61,8 @@ class MonthlyBudgetMessageCard extends StatelessWidget {
                 child: Text(
                   hasBudgets
                       ? (isRTL
-                          ? 'تم تعيين ${monthBudgets.length} ميزانية لهذا الشهر'
-                          : '${monthBudgets.length} budget(s) set for this month')
+                          ? 'تم تعيين $budgetCountForMonth ميزانية لهذا الشهر'
+                          : '$budgetCountForMonth budget(s) set for this month')
                       : (isRTL
                           ? 'لا توجد ميزانيات محددة لهذا الشهر'
                           : 'No specific budgets for this month'),
@@ -94,7 +83,5 @@ class MonthlyBudgetMessageCard extends StatelessWidget {
             ],
           ),
         );
-      },
-    );
   }
 }

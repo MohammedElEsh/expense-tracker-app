@@ -1,17 +1,18 @@
 // ✅ Account Dialog - Refactored (Simplified)
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_type.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 
 class AccountDialog extends StatefulWidget {
-  final Account? account;
+  final AccountEntity? account;
 
   const AccountDialog({super.key, this.account});
 
@@ -35,7 +36,7 @@ class _AccountDialogState extends State<AccountDialog> {
     }
   }
 
-  void _initializeWithAccount(Account account) {
+  void _initializeWithAccount(AccountEntity account) {
     _nameController.text = account.name;
     _balanceController.text = account.balance.toString();
     _selectedType = account.type;
@@ -58,7 +59,6 @@ class _AccountDialogState extends State<AccountDialog> {
       final accountCubit = context.read<AccountCubit>();
 
       if (isEditing) {
-        // Update existing account via Cubit
         final account = widget.account!.copyWith(
           name: _nameController.text.trim(),
           balance: double.parse(_balanceController.text),
@@ -66,23 +66,20 @@ class _AccountDialogState extends State<AccountDialog> {
         );
         accountCubit.updateAccount(account);
       } else {
-        // Add new account via Cubit
-        final account = Account(
+        final account = AccountEntity(
           id: const Uuid().v4(),
           name: _nameController.text.trim(),
           balance: double.parse(_balanceController.text),
           type: _selectedType,
-          currency:
-              SettingsService
-                  .currency, // Use app's current currency (SAR, USD, EGP, etc.)
+          currency: context.read<SettingsCubit>().state.currency,
           createdAt: DateTime.now(),
         );
         accountCubit.addAccount(account);
       }
 
       if (mounted) {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop(true);
+        if (context.canPop()) {
+          context.pop(true);
         }
       }
     } catch (e) {
@@ -153,7 +150,7 @@ class _AccountDialogState extends State<AccountDialog> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => context.pop(),
                           icon: Icon(
                             Icons.close,
                             color:

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
 
 class VendorInfoCard extends StatelessWidget {
-  final Vendor vendor;
+  final VendorEntity vendor;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -80,7 +81,7 @@ class VendorInfoCard extends StatelessWidget {
           _buildInfoRow(
             Icons.category,
             isRTL ? 'التصنيف' : 'Category',
-            vendor.category.toString().split('.').last,
+            vendor.type.displayName(isRTL),
           ),
         ],
       ),

@@ -1,10 +1,11 @@
 // Account Details - Header Card Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
+import 'package:expense_tracker/features/accounts/presentation/utils/account_type_display.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class AccountHeaderCard extends StatelessWidget {
-  final Account account;
+  final AccountEntity account;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -52,7 +53,7 @@ class AccountHeaderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  account.icon,
+                  account.type.icon,
                   size: isDesktop ? 32 : 28,
                   color: Colors.white,
                 ),

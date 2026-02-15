@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
 
 class VendorHeaderCard extends StatelessWidget {
-  final Vendor vendor;
+  final VendorEntity vendor;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -71,7 +72,7 @@ class VendorHeaderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      vendor.category.toString().split('.').last,
+                      vendor.type.displayName(isRTL),
                       style: TextStyle(
                         fontSize: isDesktop ? 16 : 14,
                         color: Colors.white.withValues(alpha: 0.9),
@@ -104,10 +105,10 @@ class VendorHeaderCard extends StatelessWidget {
               ),
             ],
           ),
-          if (vendor.description?.isNotEmpty == true) ...[
+          if (vendor.notes?.isNotEmpty == true) ...[
             const SizedBox(height: 16),
             Text(
-              vendor.description!,
+              vendor.notes!,
               style: TextStyle(
                 fontSize: isDesktop ? 16 : 14,
                 color: Colors.white.withValues(alpha: 0.9),

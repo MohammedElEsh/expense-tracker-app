@@ -1,15 +1,18 @@
-// ✅ Vendor Dialog - Modern, Clean UI with Full Form Support
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
+import 'package:go_router/go_router.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_status.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_type.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
 
 class VendorDialog extends StatefulWidget {
-  final Vendor? vendor;
+  final VendorEntity? vendor;
 
   const VendorDialog({super.key, this.vendor});
 
@@ -32,7 +35,6 @@ class _VendorDialogState extends State<VendorDialog> {
 
   VendorType _selectedType = VendorType.supplier;
   VendorStatus _selectedStatus = VendorStatus.active;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -42,7 +44,7 @@ class _VendorDialogState extends State<VendorDialog> {
     }
   }
 
-  void _initializeWithVendor(Vendor vendor) {
+  void _initializeWithVendor(VendorEntity vendor) {
     _nameController.text = vendor.name;
     _companyNameController.text = vendor.companyName ?? '';
     _emailController.text = vendor.email ?? '';
@@ -72,119 +74,55 @@ class _VendorDialogState extends State<VendorDialog> {
     super.dispose();
   }
 
-  Future<void> _saveVendor() async {
+  void _saveVendor() {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final name = _nameController.text.trim();
+    final companyName = _companyNameController.text.trim().isEmpty ? null : _companyNameController.text.trim();
+    final email = _emailController.text.trim().isEmpty ? null : _emailController.text.trim();
+    final phone = _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim();
+    final address = _addressController.text.trim().isEmpty ? null : _addressController.text.trim();
+    final taxNumber = _taxNumberController.text.trim().isEmpty ? null : _taxNumberController.text.trim();
+    final commercialRegistration = _commercialRegController.text.trim().isEmpty ? null : _commercialRegController.text.trim();
+    final contactPerson = _contactPersonController.text.trim().isEmpty ? null : _contactPersonController.text.trim();
+    final bankAccount = _bankAccountController.text.trim().isEmpty ? null : _bankAccountController.text.trim();
+    final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
 
-    try {
-      final vendor =
-          widget.vendor?.copyWith(
-            name: _nameController.text.trim(),
-            companyName:
-                _companyNameController.text.trim().isEmpty
-                    ? null
-                    : _companyNameController.text.trim(),
-            email:
-                _emailController.text.trim().isEmpty
-                    ? null
-                    : _emailController.text.trim(),
-            phone:
-                _phoneController.text.trim().isEmpty
-                    ? null
-                    : _phoneController.text.trim(),
-            address:
-                _addressController.text.trim().isEmpty
-                    ? null
-                    : _addressController.text.trim(),
-            taxNumber:
-                _taxNumberController.text.trim().isEmpty
-                    ? null
-                    : _taxNumberController.text.trim(),
-            commercialRegistration:
-                _commercialRegController.text.trim().isEmpty
-                    ? null
-                    : _commercialRegController.text.trim(),
-            contactPerson:
-                _contactPersonController.text.trim().isEmpty
-                    ? null
-                    : _contactPersonController.text.trim(),
-            bankAccount:
-                _bankAccountController.text.trim().isEmpty
-                    ? null
-                    : _bankAccountController.text.trim(),
-            notes:
-                _notesController.text.trim().isEmpty
-                    ? null
-                    : _notesController.text.trim(),
-            type: _selectedType,
-            status: _selectedStatus,
-          ) ??
-          Vendor(
-            id: const Uuid().v4(),
-            name: _nameController.text.trim(),
-            companyName:
-                _companyNameController.text.trim().isEmpty
-                    ? null
-                    : _companyNameController.text.trim(),
-            email:
-                _emailController.text.trim().isEmpty
-                    ? null
-                    : _emailController.text.trim(),
-            phone:
-                _phoneController.text.trim().isEmpty
-                    ? null
-                    : _phoneController.text.trim(),
-            address:
-                _addressController.text.trim().isEmpty
-                    ? null
-                    : _addressController.text.trim(),
-            taxNumber:
-                _taxNumberController.text.trim().isEmpty
-                    ? null
-                    : _taxNumberController.text.trim(),
-            commercialRegistration:
-                _commercialRegController.text.trim().isEmpty
-                    ? null
-                    : _commercialRegController.text.trim(),
-            contactPerson:
-                _contactPersonController.text.trim().isEmpty
-                    ? null
-                    : _contactPersonController.text.trim(),
-            bankAccount:
-                _bankAccountController.text.trim().isEmpty
-                    ? null
-                    : _bankAccountController.text.trim(),
-            notes:
-                _notesController.text.trim().isEmpty
-                    ? null
-                    : _notesController.text.trim(),
-            type: _selectedType,
-            status: _selectedStatus,
-            createdAt: DateTime.now(),
-          );
-
-      final vendorService = serviceLocator.vendorService;
-      if (widget.vendor != null) {
-        await vendorService.updateVendor(vendor);
-      } else {
-        await vendorService.createVendor(vendor);
-      }
-
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(true);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isRTL ? 'خطأ: $e' : 'Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+    final entity = widget.vendor?.copyWith(
+          name: name,
+          companyName: companyName,
+          email: email,
+          phone: phone,
+          address: address,
+          taxNumber: taxNumber,
+          commercialRegistration: commercialRegistration,
+          contactPerson: contactPerson,
+          bankAccount: bankAccount,
+          notes: notes,
+          type: _selectedType,
+          status: _selectedStatus,
+        ) ??
+        VendorEntity(
+          id: '',
+          name: name,
+          companyName: companyName,
+          type: _selectedType,
+          status: _selectedStatus,
+          email: email,
+          phone: phone,
+          address: address,
+          taxNumber: taxNumber,
+          commercialRegistration: commercialRegistration,
+          contactPerson: contactPerson,
+          bankAccount: bankAccount,
+          notes: notes,
+          createdAt: DateTime.now(),
         );
-      }
+
+    if (widget.vendor != null) {
+      context.read<VendorCubit>().updateVendor(entity);
+    } else {
+      context.read<VendorCubit>().createVendor(entity);
     }
   }
 
@@ -194,35 +132,51 @@ class _VendorDialogState extends State<VendorDialog> {
     final maxWidth = ResponsiveUtils.getDialogWidth(context);
     final isEditing = widget.vendor != null;
 
-    return BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) {
-        final isRTL = settings.language == 'ar';
-        final theme = Theme.of(context);
+    return BlocListener<VendorCubit, VendorState>(
+      listener: (context, state) {
+        if (state is VendorError && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+        if (state is VendorLoaded && mounted && context.canPop()) {
+          context.pop(true);
+        }
+      },
+      child: BlocBuilder<VendorCubit, VendorState>(
+        buildWhen: (prev, curr) => curr is VendorLoading || curr is VendorLoaded || curr is VendorError,
+        builder: (context, state) {
+          final isLoading = state is VendorLoading;
 
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: isDesktop ? maxWidth : 600,
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  _buildHeader(context, settings, isRTL, isEditing),
+          return BlocBuilder<SettingsCubit, SettingsState>(
+            builder: (context, settings) {
+              final isRTL = settings.language == 'ar';
+              final theme = Theme.of(context);
 
-                  // Form Content
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isDesktop ? maxWidth : 600,
+                    maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header
+                        _buildHeader(context, settings, isRTL, isEditing),
+
+                        // Form Content
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                           // Basic Information Section
                           _buildSectionTitle(
                             context,
@@ -318,14 +272,16 @@ class _VendorDialogState extends State<VendorDialog> {
                     ),
                   ),
 
-                  // Action Buttons
-                  _buildActionButtons(context, settings, isRTL, isEditing),
+                  _buildActionButtons(context, settings, isRTL, isEditing, isLoading),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  },
+      ),
     );
   }
 
@@ -370,7 +326,7 @@ class _VendorDialogState extends State<VendorDialog> {
             ),
           ),
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => context.pop(),
             icon: Icon(
               Icons.close,
               color: settings.isDarkMode ? Colors.black : Colors.white,
@@ -467,9 +423,9 @@ class _VendorDialogState extends State<VendorDialog> {
                   Expanded(
                     // This is the key: allows text to take remaining space
                     child: Text(
-                      isRTL ? type.arabicName : type.englishName,
+                      type.displayName(isRTL),
                       overflow: TextOverflow.ellipsis,
-                      maxLines: 1, // Ensures single-line with ellipsis
+                      maxLines: 1,
                     ),
                   ),
                 ],
@@ -515,9 +471,9 @@ class _VendorDialogState extends State<VendorDialog> {
                   Expanded(
                     // ← Key fix: allows text to flexibly take remaining space
                     child: Text(
-                      isRTL ? status.arabicName : status.englishName,
+                      status.displayName(isRTL),
                       overflow: TextOverflow.ellipsis,
-                      maxLines: 1, // Ensures single line with clean truncation
+                      maxLines: 1,
                     ),
                   ),
                 ],
@@ -670,6 +626,7 @@ class _VendorDialogState extends State<VendorDialog> {
     SettingsState settings,
     bool isRTL,
     bool isEditing,
+    bool isLoading,
   ) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -683,7 +640,7 @@ class _VendorDialogState extends State<VendorDialog> {
         children: [
           Expanded(
             child: OutlinedButton(
-              onPressed: _isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => context.pop(),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -703,7 +660,7 @@ class _VendorDialogState extends State<VendorDialog> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _saveVendor,
+              onPressed: isLoading ? null : _saveVendor,
               style: ElevatedButton.styleFrom(
                 backgroundColor: settings.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -713,7 +670,7 @@ class _VendorDialogState extends State<VendorDialog> {
                 elevation: 2,
               ),
               child:
-                  _isLoading
+                  isLoading
                       ? SizedBox(
                         height: 20,
                         width: 20,

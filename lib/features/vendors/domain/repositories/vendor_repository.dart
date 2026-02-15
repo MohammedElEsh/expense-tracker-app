@@ -1,47 +1,19 @@
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
 
-/// Abstract repository interface for vendor operations.
-///
-/// Defines the contract for vendor data access. Implementations
-/// handle the actual data fetching (API, local cache, etc.).
+/// Repository interface for vendor operations.
 abstract class VendorRepository {
-  /// Get all vendors.
-  ///
-  /// Returns a list of all [Vendor] objects.
-  Future<List<Vendor>> getAllVendors();
+  Future<List<VendorEntity>> getAll();
 
-  /// Get filtered vendors with pagination.
-  ///
-  /// Supports server-side filtering by [search], [status], [type],
-  /// and sorting via [sort]. Pagination is controlled by [page] and [limit].
-  /// Returns a map containing 'vendors' and 'pagination' data.
-  Future<Map<String, dynamic>> getFilteredVendors({
-    int page = 1,
-    int limit = 20,
-    String? search,
-    VendorStatus? status,
-    VendorType? type,
-    String? sort,
-  });
+  Future<VendorEntity?> getById(String vendorId);
 
-  /// Get a single vendor by its [vendorId].
-  ///
-  /// Returns `null` if not found.
-  Future<Vendor?> getVendorById(String vendorId);
+  Future<VendorEntity> create(VendorEntity vendor);
 
-  /// Create a new vendor.
-  ///
-  /// Returns the created [Vendor] with server-assigned ID.
-  Future<Vendor> createVendor(Vendor vendor);
+  Future<VendorEntity> update(VendorEntity vendor);
 
-  /// Update an existing vendor.
-  ///
-  /// Returns the updated [Vendor].
-  Future<Vendor> updateVendor(Vendor vendor);
+  Future<void> delete(String vendorId);
 
-  /// Delete a vendor by its [vendorId].
-  Future<void> deleteVendor(String vendorId);
+  /// Statistics derived from current vendors (e.g. total count, active count).
+  Future<Map<String, dynamic>> getStatistics();
 
-  /// Clear any cached vendor data.
   void clearCache();
 }

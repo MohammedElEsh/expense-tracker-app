@@ -1,18 +1,19 @@
-// ✅ Clean Architecture - Recurring Expense Item Widget
+// ✅ Clean Architecture - Recurring Expense Item (domain entity only)
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:intl/intl.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/utils/recurring_expense_display_helper.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/utils/theme_helper.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/pages/recurring_expense_details_screen.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
-import 'package:intl/intl.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 
 class RecurringExpenseItem extends StatelessWidget {
-  final RecurringExpense expense;
+  final RecurringExpenseEntity expense;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggle;
@@ -26,7 +27,7 @@ class RecurringExpenseItem extends StatelessWidget {
   });
 
   String _getNextDueText(bool isRTL) {
-    final nextDue = expense.nextDue ?? expense.calculateNextDue();
+    final nextDue = expense.nextDueDate;
     final now = DateTime.now();
     final difference = nextDue.difference(now).inDays;
 
@@ -50,7 +51,7 @@ class RecurringExpenseItem extends StatelessWidget {
           : AppColors.textSecondaryLight;
     }
 
-    final nextDue = expense.nextDue ?? expense.calculateNextDue();
+    final nextDue = expense.nextDueDate;
     final now = DateTime.now();
     final difference = nextDue.difference(now).inDays;
 
@@ -64,12 +65,7 @@ class RecurringExpenseItem extends StatelessWidget {
   }
 
   void _navigateToDetails(BuildContext context) {
-    Navigator.push(
-      context,
-      AnimatedPageRoute(
-        child: RecurringExpenseDetailsScreen(recurringExpense: expense),
-      ),
-    );
+    context.push(AppRoutes.recurringExpenseDetails, extra: expense);
   }
 
   @override
@@ -193,9 +189,7 @@ class RecurringExpenseItem extends StatelessWidget {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          isRTL
-                              ? expense.recurrenceType.displayName
-                              : expense.recurrenceType.englishName,
+                          expense.recurrenceType.displayName(isRTL),
                           style: TextStyle(color: context.secondaryTextColor),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,

@@ -1,27 +1,40 @@
 import 'package:equatable/equatable.dart';
-import 'package:expense_tracker/features/companies/data/models/company.dart';
+import 'package:expense_tracker/features/companies/domain/entities/company_entity.dart';
 
-class CompanyState extends Equatable {
-  final Company? company;
-  final bool isLoading;
-  final String? error;
-
-  const CompanyState({this.company, this.isLoading = false, this.error});
+/// Base for company screen states.
+sealed class CompanyState extends Equatable {
+  const CompanyState();
 
   @override
-  List<Object?> get props => [company, isLoading, error];
+  List<Object?> get props => [];
+}
 
-  CompanyState copyWith({
-    Company? company,
-    bool? isLoading,
-    String? error,
-    bool clearError = false,
-    bool clearCompany = false,
-  }) {
-    return CompanyState(
-      company: clearCompany ? null : (company ?? this.company),
-      isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : (error ?? this.error),
-    );
-  }
+/// Initial state before any load.
+final class CompanyInitial extends CompanyState {
+  const CompanyInitial();
+}
+
+/// Loading in progress.
+final class CompanyLoading extends CompanyState {
+  const CompanyLoading();
+}
+
+/// Data loaded (company may be null when user has no company).
+final class CompanyLoaded extends CompanyState {
+  final CompanyEntity? company;
+
+  const CompanyLoaded({this.company});
+
+  @override
+  List<Object?> get props => [company];
+}
+
+/// Operation failed.
+final class CompanyError extends CompanyState {
+  final String message;
+
+  const CompanyError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

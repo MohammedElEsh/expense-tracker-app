@@ -1,10 +1,10 @@
-// Recurring Expense Details - Header Card Widget
+// Recurring Expense Details - Header Card (domain entity only)
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class RecurringExpenseHeaderCard extends StatelessWidget {
-  final RecurringExpense recurringExpense;
+  final RecurringExpenseEntity recurringExpense;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;

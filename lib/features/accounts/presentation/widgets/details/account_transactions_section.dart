@@ -1,11 +1,10 @@
 // Account Details - Transactions Section Widget
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
-import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
-
 class AccountTransactionsSection extends StatelessWidget {
   final SettingsState settings;
   final bool isRTL;
@@ -152,9 +151,7 @@ class AccountTransactionsSection extends StatelessWidget {
   }
 
   void _navigateToExpenseDetails(BuildContext context, Expense expense) {
-    Navigator.of(
-      context,
-    ).push(AnimatedPageRoute(child: ExpenseDetailsScreen(expense: expense)));
+    context.push(AppRoutes.expenseDetails, extra: expense);
   }
 
   void _showAllTransactions(BuildContext context) {
@@ -176,7 +173,7 @@ class AccountTransactionsSection extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => context.pop(),
                 child: Text(isRTL ? 'إغلاق' : 'Close'),
               ),
             ],

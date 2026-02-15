@@ -49,6 +49,10 @@ class AboutSectionCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+              ).copyWith(
+                textStyle: WidgetStateProperty.all(
+                  const TextStyle(inherit: false),
+                ),
               ),
             ),
           ),

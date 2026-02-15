@@ -1,4 +1,5 @@
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurrence_type.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 /// Keep in sync with RecurringExpenseNotificationService defaults.
@@ -31,12 +32,12 @@ class UpcomingItem {
   final tz.TZDateTime date;
 }
 
-/// Pure helper that converts a list of [RecurringExpense] into sorted
+/// Pure helper that converts a list of [RecurringExpenseEntity] into sorted
 /// [UpcomingItem]s falling within the next [defaultUpcomingDays] days.
 class UpcomingItemsBuilder {
   const UpcomingItemsBuilder._();
 
-  static List<UpcomingItem> build(List<RecurringExpense> expenses) {
+  static List<UpcomingItem> build(List<RecurringExpenseEntity> expenses) {
     final now = tz.TZDateTime.now(tz.local);
     final end = now.add(const Duration(days: defaultUpcomingDays));
 
@@ -78,11 +79,54 @@ class UpcomingItemsBuilder {
 
   // ---------------------- Date helpers ----------------------
 
+  /// Next due date for entity (date only); used as base for reminder time.
+  static DateTime _entityNextDueDate(RecurringExpenseEntity e) {
+    final now = DateTime.now();
+    switch (e.recurrenceType) {
+      case RecurrenceType.daily:
+        return now.add(const Duration(days: 1));
+      case RecurrenceType.weekly:
+        final targetWeekday = e.dayOfWeek ?? 1;
+        var next = now;
+        while (next.weekday != targetWeekday) {
+          next = next.add(const Duration(days: 1));
+        }
+        if (_isSameDay(next, now)) {
+          next = next.add(const Duration(days: 7));
+        }
+        return next;
+      case RecurrenceType.monthly:
+        final targetDay = e.dayOfMonth ?? 1;
+        var next = DateTime(now.year, now.month, targetDay);
+        if (next.isBefore(now) || _isSameDay(next, now)) {
+          next = DateTime(now.year, now.month + 1, targetDay);
+        }
+        if (targetDay > 28) {
+          final lastDay = DateTime(next.year, next.month + 1, 0).day;
+          if (targetDay > lastDay) {
+            next = DateTime(next.year, next.month, lastDay);
+          }
+        }
+        return next;
+      case RecurrenceType.yearly:
+        final targetDay = e.dayOfMonth ?? 1;
+        var next = DateTime(now.year, now.month, targetDay);
+        if (next.isBefore(now)) {
+          next = DateTime(now.year + 1, now.month, targetDay);
+        }
+        return next;
+    }
+  }
+
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   static tz.TZDateTime _nextReminderDate(
-    RecurringExpense expense,
+    RecurringExpenseEntity expense,
     tz.TZDateTime now,
   ) {
-    final base = expense.nextDue ?? expense.calculateNextDue();
+    final base = expense.nextDue ?? _entityNextDueDate(expense);
     var candidate = tz.TZDateTime(
       tz.local,
       base.year,

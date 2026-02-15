@@ -1,24 +1,30 @@
-// Add Expense - Cubit
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/add_expense_state.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/expenses/data/models/expense.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/core/constants/category_constants.dart'
     show CategoryType;
+import 'package:expense_tracker/core/domain/app_mode.dart';
+import 'package:expense_tracker/features/expenses/data/models/expense.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/add_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/update_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/add_expense_state.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart';
 
 class AddExpenseCubit extends Cubit<AddExpenseState> {
   final AppMode appMode;
   final Expense? expenseToEdit;
+  final AddExpenseUseCase _addExpenseUseCase;
+  final UpdateExpenseUseCase _updateExpenseUseCase;
 
   AddExpenseCubit({
     DateTime? initialDate,
     required this.appMode,
     this.expenseToEdit,
-  }) : super(
+    required AddExpenseUseCase addExpenseUseCase,
+    required UpdateExpenseUseCase updateExpenseUseCase,
+  })  : _addExpenseUseCase = addExpenseUseCase,
+        _updateExpenseUseCase = updateExpenseUseCase,
+        super(
          AddExpenseState(
            date: initialDate ?? expenseToEdit?.date ?? DateTime.now(),
            amount: expenseToEdit?.amount ?? 0.0,
@@ -89,45 +95,27 @@ class AddExpenseCubit extends Cubit<AddExpenseState> {
     emit(state.copyWith(vendorName: vendorName));
   }
 
+  /// Call this with projects and vendor names from ProjectCubit and VendorCubit (UI responsibility).
+  void setBusinessData({
+    required List<Project> projects,
+    required List<String> vendorNames,
+  }) {
+    emit(
+      state.copyWith(
+        availableProjects: projects,
+        availableVendors: vendorNames,
+        isLoadingBusinessData: false,
+      ),
+    );
+  }
+
   Future<void> loadBusinessData() async {
     if (appMode != AppMode.business) {
       emit(state.copyWith(isLoadingBusinessData: false));
       return;
     }
-
-    try {
-      emit(state.copyWith(isLoadingBusinessData: true));
-
-      // Load all projects and filter out cancelled/completed
-      final projectsResponse = await serviceLocator.projectService
-          .getAllProjects(forceRefresh: false);
-      final projects =
-          projectsResponse.projects
-              .where(
-                (p) =>
-                    p.status != ProjectStatus.cancelled &&
-                    p.status != ProjectStatus.completed,
-              )
-              .toList();
-
-      // Load vendors
-      final vendorService = serviceLocator.vendorService;
-      final vendors = await vendorService.getAllVendors();
-      final vendorNames = vendors.map((v) => v.name).toList();
-
-      emit(
-        state.copyWith(
-          availableProjects: projects,
-          availableVendors: vendorNames,
-          isLoadingBusinessData: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error loading business data: $error');
-      emit(
-        state.copyWith(isLoadingBusinessData: false, error: error.toString()),
-      );
-    }
+    emit(state.copyWith(isLoadingBusinessData: true));
+    emit(state.copyWith(isLoadingBusinessData: false));
   }
 
   Future<void> saveExpense({String? expenseIdToEdit}) async {
@@ -152,17 +140,8 @@ class AddExpenseCubit extends Cubit<AddExpenseState> {
     try {
       emit(state.copyWith(isSaving: true, clearError: true));
 
-      final expenseApiService = serviceLocator.expenseApiService;
-
       if (expenseIdToEdit != null && expenseIdToEdit.isNotEmpty) {
-        // Update existing expense - PUT /api/expenses/:id (NEVER use POST for updates)
-        debugPrint('✏️ Updating expense: $expenseIdToEdit');
-        debugPrint('   Account: ${state.accountId}');
-        debugPrint('   Amount: ${state.amount}');
-        debugPrint('   Category: ${state.category}');
-        debugPrint('   Date: ${state.date}');
-
-        final updatedExpense = await expenseApiService.updateExpense(
+        await _updateExpenseUseCase(
           expenseIdToEdit,
           accountId:
               state.accountId?.isNotEmpty == true ? state.accountId : null,
@@ -186,17 +165,8 @@ class AddExpenseCubit extends Cubit<AddExpenseState> {
           employeeId:
               state.employeeId?.isNotEmpty == true ? state.employeeId : null,
         );
-
-        debugPrint('✅ Expense updated successfully: ${updatedExpense.id}');
       } else {
-        // Create new expense - POST /api/expenses
-        debugPrint('➕ Creating new expense');
-        debugPrint('   Account: ${state.accountId}');
-        debugPrint('   Amount: ${state.amount}');
-        debugPrint('   Category: ${state.category}');
-        debugPrint('   Date: ${state.date}');
-
-        final createdExpense = await expenseApiService.createExpense(
+        await _addExpenseUseCase(
           accountId: state.accountId!,
           amount: state.amount,
           category: state.category,
@@ -218,8 +188,6 @@ class AddExpenseCubit extends Cubit<AddExpenseState> {
           employeeId:
               state.employeeId?.isNotEmpty == true ? state.employeeId : null,
         );
-
-        debugPrint('✅ Expense created successfully: ${createdExpense.id}');
       }
 
       emit(state.copyWith(isSaving: false, saveSuccess: true));

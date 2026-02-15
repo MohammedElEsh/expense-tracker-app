@@ -1,278 +1,223 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_report_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/create_project_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/delete_project_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_project_by_id_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_project_report_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_projects_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_projects_statistics_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/update_project_usecase.dart';
 import 'package:expense_tracker/features/projects/presentation/cubit/project_state.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 
 class ProjectCubit extends Cubit<ProjectState> {
-  final ProjectApiService _projectApiService;
+  final GetProjectsUseCase getProjectsUseCase;
+  final GetProjectByIdUseCase getProjectByIdUseCase;
+  final CreateProjectUseCase createProjectUseCase;
+  final UpdateProjectUseCase updateProjectUseCase;
+  final DeleteProjectUseCase deleteProjectUseCase;
+  final GetProjectReportUseCase getProjectReportUseCase;
+  final GetProjectsStatisticsUseCase getProjectsStatisticsUseCase;
 
-  ProjectCubit({ProjectApiService? projectApiService})
-    : _projectApiService = projectApiService ?? serviceLocator.projectService,
-      super(const ProjectState());
+  ProjectCubit({
+    required this.getProjectsUseCase,
+    required this.getProjectByIdUseCase,
+    required this.createProjectUseCase,
+    required this.updateProjectUseCase,
+    required this.deleteProjectUseCase,
+    required this.getProjectReportUseCase,
+    required this.getProjectsStatisticsUseCase,
+  }) : super(const ProjectInitial());
 
-  /// Load all projects from API
+  static String _messageFromError(Object error) {
+    final s = error.toString();
+    if (s.contains('NetworkException') || s.contains('SocketException')) {
+      return 'Network error. Please check your connection.';
+    }
+    if (s.contains('ServerException')) return 'Server error. Please try again later.';
+    if (s.contains('UnauthorizedException') || s.contains('401')) {
+      return 'Authentication failed. Please log in again.';
+    }
+    if (s.contains('ValidationException')) return s.replaceAll('Exception: ', '');
+    return s.replaceAll('Exception: ', '');
+  }
+
   Future<void> loadProjects({bool forceRefresh = false}) async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is ProjectLoading) return;
+    emit(const ProjectLoading());
     try {
-      debugPrint('🔄 Loading projects...');
-      final response = await _projectApiService.getAllProjects(
-        forceRefresh: forceRefresh,
-      );
-
-      debugPrint('✅ Loaded ${response.projects.length} projects');
-
-      final filteredProjects = _applyFilters(response.projects);
-
-      emit(
-        state.copyWith(
-          projects: response.projects,
-          filteredProjects: filteredProjects,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error loading projects: $error');
-      String errorMessage = 'Failed to load projects';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (error.toString().contains('UnauthorizedException') ||
-          error.toString().contains('401')) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else {
-        errorMessage =
-            'Failed to load projects: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final projects = await getProjectsUseCase(forceRefresh: forceRefresh);
+      Map<String, dynamic>? stats;
+      try {
+        stats = await getProjectsStatisticsUseCase();
+      } catch (_) {}
+      final filtered = _applyFilters(projects);
+      emit(ProjectLoaded(
+        projects: projects,
+        filteredProjects: filtered,
+        statistics: stats,
+      ));
+    } catch (e) {
+      debugPrint('ProjectCubit loadProjects error: $e');
+      emit(ProjectError(_messageFromError(e)));
     }
   }
 
-  /// Create a new project
-  Future<void> createProject(Project project) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> createProject(ProjectEntity project) async {
+    if (state is ProjectLoading) return;
+    final prev = state is ProjectLoaded ? state as ProjectLoaded : null;
+    emit(const ProjectLoading());
     try {
-      debugPrint('➕ Creating project: ${project.name}');
-      final createdProject = await _projectApiService.createProject(project);
-
-      debugPrint('✅ Project created: ${createdProject.id}');
-
-      final updatedProjects = List<Project>.from(state.projects)
-        ..add(createdProject);
-      final filteredProjects = _applyFilters(updatedProjects);
-
-      emit(
-        state.copyWith(
-          projects: updatedProjects,
-          filteredProjects: filteredProjects,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error creating project: $error');
-      String errorMessage = 'Failed to create project';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ValidationException')) {
-        errorMessage = error.toString().replaceAll('Exception: ', '');
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to create project: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final created = await createProjectUseCase(project);
+      final list = prev?.projects ?? <ProjectEntity>[];
+      final updated = List<ProjectEntity>.from(list)..add(created);
+      final filtered = _applyFilters(updated, existingState: prev);
+      emit(ProjectLoaded(
+        projects: updated,
+        filteredProjects: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedStatus: prev?.selectedStatus,
+      ));
+    } catch (e) {
+      debugPrint('ProjectCubit createProject error: $e');
+      emit(ProjectError(_messageFromError(e)));
     }
   }
 
-  /// Update an existing project
-  Future<void> updateProject(String projectId, Project project) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> updateProject(String projectId, ProjectEntity project) async {
+    if (state is ProjectLoading) return;
+    final prev = state is ProjectLoaded ? state as ProjectLoaded : null;
+    emit(const ProjectLoading());
     try {
-      debugPrint('✏️ Updating project: $projectId');
-      final updatedProject = await _projectApiService.updateProject(
-        projectId,
-        project,
-      );
-
-      debugPrint('✅ Project updated: ${updatedProject.id}');
-
-      final updatedProjects = List<Project>.from(state.projects);
-      final index = updatedProjects.indexWhere((p) => p.id == projectId);
-      if (index != -1) {
-        updatedProjects[index] = updatedProject;
-      }
-      final filteredProjects = _applyFilters(updatedProjects);
-
-      // Update selectedProject if it was the one being edited
-      final updatedSelectedProject =
-          state.selectedProject?.id == projectId
-              ? updatedProject
-              : state.selectedProject;
-
-      emit(
-        state.copyWith(
-          projects: updatedProjects,
-          filteredProjects: filteredProjects,
-          selectedProject: updatedSelectedProject,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error updating project: $error');
-      String errorMessage = 'Failed to update project';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ValidationException')) {
-        errorMessage = error.toString().replaceAll('Exception: ', '');
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to update project: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final updatedProject = await updateProjectUseCase(project);
+      final list = prev?.projects ?? <ProjectEntity>[];
+      final updated = list.map((p) => p.id == projectId ? updatedProject : p).toList();
+      final filtered = _applyFilters(updated, existingState: prev);
+      final selected = prev?.selectedProject?.id == projectId ? updatedProject : prev?.selectedProject;
+      emit(ProjectLoaded(
+        projects: updated,
+        filteredProjects: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedStatus: prev?.selectedStatus,
+        selectedProject: selected,
+      ));
+    } catch (e) {
+      debugPrint('ProjectCubit updateProject error: $e');
+      emit(ProjectError(_messageFromError(e)));
     }
   }
 
-  /// Delete a project by ID
   Future<void> deleteProject(String projectId) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is ProjectLoading) return;
+    final prev = state is ProjectLoaded ? state as ProjectLoaded : null;
+    emit(const ProjectLoading());
     try {
-      debugPrint('🗑️ Deleting project: $projectId');
-      await _projectApiService.deleteProject(projectId);
-
-      debugPrint('✅ Project deleted: $projectId');
-
-      final updatedProjects = List<Project>.from(state.projects)
-        ..removeWhere((p) => p.id == projectId);
-      final filteredProjects = _applyFilters(updatedProjects);
-
-      // Clear selectedProject if it was the one being deleted
-      final clearSelected = state.selectedProject?.id == projectId;
-
-      emit(
-        state.copyWith(
-          projects: updatedProjects,
-          filteredProjects: filteredProjects,
-          isLoading: false,
-          clearSelectedProject: clearSelected,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error deleting project: $error');
-      String errorMessage = 'Failed to delete project';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to delete project: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      await deleteProjectUseCase(projectId);
+      final list = prev?.projects ?? <ProjectEntity>[];
+      final updated = list.where((p) => p.id != projectId).toList();
+      final filtered = _applyFilters(updated, existingState: prev);
+      final clearSelected = prev?.selectedProject?.id == projectId;
+      emit(ProjectLoaded(
+        projects: updated,
+        filteredProjects: filtered,
+        statistics: prev?.statistics,
+        searchQuery: prev?.searchQuery,
+        selectedStatus: prev?.selectedStatus,
+        selectedProject: clearSelected ? null : prev?.selectedProject,
+      ));
+    } catch (e) {
+      debugPrint('ProjectCubit deleteProject error: $e');
+      emit(ProjectError(_messageFromError(e)));
     }
   }
 
-  /// Select or deselect a project
-  void selectProject(Project? project) {
-    if (project == null) {
-      emit(state.copyWith(clearSelectedProject: true));
-    } else {
-      emit(state.copyWith(selectedProject: project));
-    }
+  void selectProject(ProjectEntity? project) {
+    final s = state;
+    if (s is! ProjectLoaded) return;
+    emit(ProjectLoaded(
+      projects: s.projects,
+      filteredProjects: s.filteredProjects,
+      statistics: s.statistics,
+      searchQuery: s.searchQuery,
+      selectedStatus: s.selectedStatus,
+      selectedProject: project,
+    ));
   }
 
-  /// Search projects by query string
   void searchProjects(String query) {
-    emit(
-      state.copyWith(
-        searchQuery: query.isEmpty ? null : query,
-        clearSearchQuery: query.isEmpty,
-        filteredProjects: _applyFilters(
-          state.projects,
-          searchOverride: query.isEmpty ? null : query,
-        ),
-      ),
-    );
+    final s = state;
+    if (s is! ProjectLoaded) return;
+    final filtered = _applyFilters(s.projects, searchOverride: query, existingState: s);
+    emit(ProjectLoaded(
+      projects: s.projects,
+      filteredProjects: filtered,
+      statistics: s.statistics,
+      searchQuery: query.isEmpty ? null : query,
+      selectedStatus: s.selectedStatus,
+      selectedProject: s.selectedProject,
+    ));
   }
 
-  /// Filter projects by status
   void filterByStatus(ProjectStatus? status) {
-    emit(
-      state.copyWith(
-        selectedStatus: status,
-        clearSelectedStatus: status == null,
-        filteredProjects: _applyFilters(
-          state.projects,
-          statusOverride: status,
-          clearStatus: status == null,
-        ),
-      ),
-    );
+    final s = state;
+    if (s is! ProjectLoaded) return;
+    final filtered = _applyFilters(s.projects, statusOverride: status, existingState: s);
+    emit(ProjectLoaded(
+      projects: s.projects,
+      filteredProjects: filtered,
+      statistics: s.statistics,
+      searchQuery: s.searchQuery,
+      selectedStatus: status,
+      selectedProject: s.selectedProject,
+    ));
   }
 
-  /// Clear all active filters
   void clearFilters() {
-    emit(
-      state.copyWith(
-        clearSearchQuery: true,
-        clearSelectedStatus: true,
-        filteredProjects: state.projects,
-      ),
-    );
+    final s = state;
+    if (s is! ProjectLoaded) return;
+    emit(ProjectLoaded(
+      projects: s.projects,
+      filteredProjects: s.projects,
+      statistics: s.statistics,
+      selectedProject: s.selectedProject,
+    ));
   }
 
-  /// Apply all active filters to the projects list
-  List<Project> _applyFilters(
-    List<Project> projects, {
+  Future<ProjectEntity?> getProjectById(String projectId) async {
+    return getProjectByIdUseCase(projectId);
+  }
+
+  Future<ProjectReportEntity> getProjectReport(String projectId) async {
+    return getProjectReportUseCase(projectId);
+  }
+
+  List<ProjectEntity> _applyFilters(
+    List<ProjectEntity> projects, {
     String? searchOverride,
     ProjectStatus? statusOverride,
-    bool clearStatus = false,
+    ProjectLoaded? existingState,
   }) {
-    var filtered = List<Project>.from(projects);
+    var filtered = List<ProjectEntity>.from(projects);
+    final loaded = existingState;
 
-    // Search filter
-    final query = searchOverride ?? state.searchQuery;
+    final query = searchOverride ?? loaded?.searchQuery;
     if (query != null && query.isNotEmpty) {
-      final lowerQuery = query.toLowerCase();
-      filtered =
-          filtered.where((project) {
-            return project.name.toLowerCase().contains(lowerQuery) ||
-                (project.description?.toLowerCase().contains(lowerQuery) ??
-                    false) ||
-                (project.clientName?.toLowerCase().contains(lowerQuery) ??
-                    false) ||
-                (project.managerName?.toLowerCase().contains(lowerQuery) ??
-                    false);
-          }).toList();
+      final lower = query.toLowerCase();
+      filtered = filtered.where((p) {
+        return p.name.toLowerCase().contains(lower) ||
+            (p.description?.toLowerCase().contains(lower) ?? false) ||
+            (p.clientName?.toLowerCase().contains(lower) ?? false) ||
+            (p.managerName?.toLowerCase().contains(lower) ?? false);
+      }).toList();
     }
 
-    // Status filter
-    final status =
-        clearStatus ? null : (statusOverride ?? state.selectedStatus);
+    final status = statusOverride ?? loaded?.selectedStatus;
     if (status != null) {
-      filtered = filtered.where((project) => project.status == status).toList();
+      filtered = filtered.where((p) => p.status == status).toList();
     }
 
     return filtered;

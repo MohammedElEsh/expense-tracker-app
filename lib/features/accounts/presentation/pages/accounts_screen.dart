@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
@@ -6,7 +7,7 @@ import 'package:expense_tracker/features/accounts/presentation/cubit/account_cub
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_entity.dart';
 import 'package:expense_tracker/features/accounts/presentation/widgets/account_dialog.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
@@ -172,7 +173,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     }
   }
 
-  Future<void> _handleAccountAction(String action, Account account) async {
+  Future<void> _handleAccountAction(String action, AccountEntity account) async {
     final isRTL = Localizations.localeOf(context).languageCode == 'ar';
 
     switch (action) {
@@ -206,11 +207,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => context.pop(false),
                     child: Text(isRTL ? 'إلغاء' : 'Cancel'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => context.pop(true),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.error,
                     ),

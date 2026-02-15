@@ -1,20 +1,9 @@
-import 'package:expense_tracker/features/settings/data/models/settings_model.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
+import 'package:expense_tracker/features/settings/domain/entities/settings_entity.dart';
 
-/// Abstract repository interface for settings operations.
-///
-/// Defines the contract for user settings data access.
-/// Implementations handle the actual data fetching (API, local storage, etc.).
 abstract class SettingsRepository {
-  /// Get the current user's settings.
-  ///
-  /// Returns a [SettingsModel] with all configuration values.
-  Future<SettingsModel> getSettings();
-
-  /// Update user settings.
-  ///
-  /// Only the provided non-null fields will be updated.
-  /// Returns the updated [SettingsModel].
-  Future<SettingsModel> updateSettings({
+  Future<SettingsEntity> getSettings();
+  Future<SettingsEntity> updateSettings({
     String? currency,
     String? language,
     String? theme,
@@ -22,9 +11,6 @@ abstract class SettingsRepository {
     String? companyName,
     String? companyLogo,
   });
-
-  /// Reset all settings to their default values.
-  ///
-  /// Returns the reset [SettingsModel] with default values.
-  Future<SettingsModel> resetSettings();
+  Future<SettingsEntity> resetSettings();
+  Future<void> setAppMode(AppMode mode);
 }

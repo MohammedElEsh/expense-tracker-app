@@ -1,6 +1,7 @@
-// Project Dialog - Status Selector Widget
+// Project Dialog - Status Selector Widget (domain ProjectStatus)
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/utils/project_display_helper.dart';
 
 class ProjectStatusSelector extends StatelessWidget {
   final ProjectStatus selectedStatus;
@@ -14,29 +15,10 @@ class ProjectStatusSelector extends StatelessWidget {
     required this.onChanged,
   });
 
-  String _getStatusLabel(ProjectStatus status, bool isRTL) {
-    if (!isRTL) {
-      return status.name.substring(0, 1).toUpperCase() +
-          status.name.substring(1);
-    }
-    switch (status) {
-      case ProjectStatus.planning:
-        return 'تخطيط';
-      case ProjectStatus.active:
-        return 'نشط';
-      case ProjectStatus.completed:
-        return 'مكتمل';
-      case ProjectStatus.onHold:
-        return 'معلق';
-      case ProjectStatus.cancelled:
-        return 'ملغي';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<ProjectStatus>(
-      initialValue: selectedStatus,
+      value: selectedStatus,
       decoration: InputDecoration(
         labelText: isRTL ? 'الحالة *' : 'Status *',
         border: const OutlineInputBorder(),
@@ -57,7 +39,7 @@ class ProjectStatusSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(_getStatusLabel(status, isRTL)),
+                  Text(status.displayName(isRTL)),
                 ],
               ),
             );

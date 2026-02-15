@@ -1,66 +1,77 @@
 import 'package:equatable/equatable.dart';
-import 'dart:io';
-import 'package:expense_tracker/features/expenses/data/models/expense.dart';
+import 'package:expense_tracker/features/ocr/domain/entities/ocr_result_entity.dart';
 
-// OCR Cubit State
-class OcrState extends Equatable {
-  final File? selectedImage;
-  final String? accountId;
-  final String? category;
-  final bool isScanning;
-  final Expense? scannedExpense;
-  final String? error;
-  final bool isSuccess;
-
+/// Base state for OCR flow (Equatable).
+/// Form fields (selectedImagePath, accountId, category) are carried across phases.
+sealed class OcrState extends Equatable {
   const OcrState({
-    this.selectedImage,
+    this.selectedImagePath,
     this.accountId,
     this.category,
-    this.isScanning = false,
-    this.scannedExpense,
-    this.error,
-    this.isSuccess = false,
+  });
+
+  final String? selectedImagePath;
+  final String? accountId;
+  final String? category;
+
+  @override
+  List<Object?> get props => [selectedImagePath, accountId, category];
+}
+
+/// Initial state before any action.
+final class OcrInitial extends OcrState {
+  const OcrInitial({
+    super.selectedImagePath,
+    super.accountId,
+    super.category,
+  });
+}
+
+/// Scanning or parsing in progress.
+final class OcrLoading extends OcrState {
+  const OcrLoading({
+    super.selectedImagePath,
+    super.accountId,
+    super.category,
+  });
+}
+
+/// Parsing succeeded; [result] is the parsed receipt.
+final class OcrSuccess extends OcrState {
+  final OcrResultEntity result;
+
+  const OcrSuccess(
+    this.result, {
+    super.selectedImagePath,
+    super.accountId,
+    super.category,
   });
 
   @override
-  List<Object?> get props => [
-    selectedImage,
-    accountId,
-    category,
-    isScanning,
-    scannedExpense,
-    error,
-    isSuccess,
-  ];
+  List<Object?> get props => [result, ...super.props];
+}
 
-  OcrState copyWith({
-    File? selectedImage,
-    String? accountId,
-    String? category,
-    bool? isScanning,
-    Expense? scannedExpense,
-    String? error,
-    bool? isSuccess,
-    bool clearError = false,
-    bool clearImage = false,
-    bool clearScannedExpense = false,
-  }) {
-    return OcrState(
-      selectedImage: clearImage ? null : (selectedImage ?? this.selectedImage),
-      accountId: accountId ?? this.accountId,
-      category: category ?? this.category,
-      isScanning: isScanning ?? this.isScanning,
-      scannedExpense:
-          clearScannedExpense ? null : (scannedExpense ?? this.scannedExpense),
-      error: clearError ? null : (error ?? this.error),
-      isSuccess: isSuccess ?? this.isSuccess,
-    );
-  }
+/// An error occurred; [message] describes it.
+final class OcrError extends OcrState {
+  final String message;
 
-  bool get canScan {
-    return selectedImage != null &&
-        accountId != null &&
-        accountId!.isNotEmpty &&
-        !isScanning;
-  }
+  const OcrError(
+    this.message, {
+    super.selectedImagePath,
+    super.accountId,
+    super.category,
+  });
+
+  @override
+  List<Object?> get props => [message, ...super.props];
+}
+
+/// Convenience extension for UI (avoids casting in every builder).
+extension OcrStateX on OcrState {
+  bool get isSuccess => this is OcrSuccess;
+  bool get isScanning => this is OcrLoading;
+  String? get error => this is OcrError ? (this as OcrError).message : null;
+  bool get canScan => selectedImagePath != null && selectedImagePath!.isNotEmpty;
+  OcrResultEntity? get result =>
+      this is OcrSuccess ? (this as OcrSuccess).result : null;
 }

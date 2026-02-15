@@ -1,32 +1,41 @@
-// Notifications Feature - Cubit State
 import 'package:equatable/equatable.dart';
 
-class NotificationsState extends Equatable {
-  final bool isLoading;
-  final String? error;
-  final String? selectedFilter;
-
+/// Base state for notification settings (enabled / disabled / loading).
+sealed class NotificationsState extends Equatable {
   const NotificationsState({
-    this.isLoading = false,
-    this.error,
-    this.selectedFilter,
+    this.recurringRemindersEnabled,
+    this.isApplyingToggle = false,
   });
 
-  @override
-  List<Object?> get props => [isLoading, error, selectedFilter];
+  /// Recurring reminders on/off (from recurring_expenses use cases).
+  final bool? recurringRemindersEnabled;
+  final bool isApplyingToggle;
 
-  NotificationsState copyWith({
-    bool? isLoading,
-    String? error,
-    String? selectedFilter,
-    bool clearError = false,
-    bool clearFilter = false,
-  }) {
-    return NotificationsState(
-      isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : (error ?? this.error),
-      selectedFilter:
-          clearFilter ? null : (selectedFilter ?? this.selectedFilter),
-    );
-  }
+  @override
+  List<Object?> get props => [recurringRemindersEnabled, isApplyingToggle];
+}
+
+/// Loading current state or applying change.
+final class NotificationsLoading extends NotificationsState {
+  const NotificationsLoading({super.recurringRemindersEnabled, super.isApplyingToggle});
+}
+
+/// Notifications are enabled.
+final class NotificationsEnabled extends NotificationsState {
+  const NotificationsEnabled({super.recurringRemindersEnabled, super.isApplyingToggle});
+}
+
+/// Notifications are disabled.
+final class NotificationsDisabled extends NotificationsState {
+  const NotificationsDisabled({super.recurringRemindersEnabled, super.isApplyingToggle});
+}
+
+/// An error occurred (e.g. permission denied).
+final class NotificationsError extends NotificationsState {
+  const NotificationsError(this.message, {super.recurringRemindersEnabled, super.isApplyingToggle});
+
+  final String message;
+
+  @override
+  List<Object?> get props => [message, ...super.props];
 }

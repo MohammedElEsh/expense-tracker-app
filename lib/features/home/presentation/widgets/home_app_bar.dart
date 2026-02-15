@@ -2,15 +2,16 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'package:expense_tracker/core/theme/app_theme.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/features/users/presentation/utils/user_role_display.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isRTL;
   final bool isDesktop;
   final bool isTablet;
   final AppMode appMode;
-  final User? currentUser;
+  final UserEntity? currentUser;
   final VoidCallback onLogout;
   final VoidCallback onSearch;
 

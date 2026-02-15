@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/network/api_service.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/companies/data/models/company.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 
 // =============================================================================
 // COMPANY API SERVICE - Clean Architecture Remote Data Source
@@ -29,20 +29,21 @@ class CompanyResponse {
   }
 }
 
-/// Remote data source for companies using REST API
-/// Uses core services: ApiService
+/// Remote data source for companies using REST API.
+/// Uses ApiService and AppContext (no static SettingsService).
 class CompanyApiService {
   final ApiService _apiService;
+  final AppContext _appContext;
 
-  // Cache for company
   Company? _cachedCompany;
   DateTime? _lastFetchTime;
-
-  // Cache duration: 5 minutes
   static const Duration _cacheDuration = Duration(minutes: 5);
 
-  CompanyApiService({required ApiService apiService})
-    : _apiService = apiService;
+  CompanyApiService({
+    required ApiService apiService,
+    required AppContext appContext,
+  })  : _apiService = apiService,
+        _appContext = appContext;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -78,9 +79,7 @@ class CompanyApiService {
   /// }
   Future<Company> createCompany(Company company) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-
-      // Only business mode can create companies
+      final currentAppMode = _appContext.appMode;
       if (currentAppMode != AppMode.business) {
         throw ValidationException(
           'Companies are only available in business mode',
@@ -142,9 +141,7 @@ class CompanyApiService {
   /// GET /api/company/me
   Future<Company?> getMyCompany({bool forceRefresh = false}) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-
-      // Only business mode can access companies
+      final currentAppMode = _appContext.appMode;
       if (currentAppMode != AppMode.business) {
         return null;
       }
@@ -207,8 +204,7 @@ class CompanyApiService {
   /// }
   Future<Company> updateCompany(Company company) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-
+      final currentAppMode = _appContext.appMode;
       if (currentAppMode != AppMode.business) {
         throw ValidationException(
           'Companies are only available in business mode',
@@ -269,8 +265,7 @@ class CompanyApiService {
   /// DELETE /api/company/me
   Future<void> deleteCompany() async {
     try {
-      final currentAppMode = SettingsService.appMode;
-
+      final currentAppMode = _appContext.appMode;
       if (currentAppMode != AppMode.business) {
         throw ValidationException(
           'Companies are only available in business mode',

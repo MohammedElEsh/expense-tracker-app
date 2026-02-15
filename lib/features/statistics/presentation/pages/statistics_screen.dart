@@ -4,15 +4,15 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/core/services/permission_service.dart';
+import 'package:expense_tracker/features/users/domain/utils/permission_service.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/core/constants/categories.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
+import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_cubit.dart';
+import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_state.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/enhanced_statistics_screen.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 
@@ -24,32 +24,46 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
-  DateTime selectedMonth = DateTime.now();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<StatisticsCubit>().loadStatistics();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SettingsCubit, SettingsState>(
       builder: (context, settings) {
-        return BlocBuilder<ExpenseCubit, ExpenseState>(
-          builder: (context, expenseState) {
-            return BlocBuilder<UserCubit, UserState>(
-              builder: (context, userState) {
-                final isRTL = settings.language == 'ar';
-                final currentUser = userState.currentUser;
+        return BlocBuilder<UserCubit, UserState>(
+          builder: (context, userState) {
+            final isRTL = settings.language == 'ar';
+            final currentUser = userState is UserLoaded ? userState.currentUser : null;
 
-                // Use enhanced statistics for users with advanced permissions
-                if (PermissionService.canViewAdvancedReports(currentUser)) {
-                  return const EnhancedStatisticsScreen();
+            if (PermissionService.canViewAdvancedReportsEntity(currentUser)) {
+              return const EnhancedStatisticsScreen();
+            }
+
+            return BlocBuilder<StatisticsCubit, StatisticsState>(
+              builder: (context, state) {
+                final selectedMonth = DateTime(state.selectedYear, state.selectedMonth);
+                final totalMonth = state.statistics?.totalAmount ?? 0.0;
+                final categoryTotals = state.statistics?.categoryTotals ?? <String, double>{};
+
+                if (state.isLoading && state.statistics == null) {
+                  return Directionality(
+                    textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                    child: Scaffold(
+                      appBar: AppBar(
+                        title: Text(isRTL ? 'الإحصائيات' : 'Statistics'),
+                        backgroundColor: settings.primaryColor,
+                        foregroundColor: settings.isDarkMode ? Colors.black : Colors.white,
+                      ),
+                      body: const Center(child: CircularProgressIndicator()),
+                    ),
+                  );
                 }
-
-                final totalMonth = expenseState.getTotalForMonth(
-                  selectedMonth.year,
-                  selectedMonth.month,
-                );
-                final categoryTotals = expenseState.getCategoryTotalsForMonth(
-                  selectedMonth.year,
-                  selectedMonth.month,
-                );
 
                 return Directionality(
                   textDirection:
@@ -366,17 +380,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Future<void> _selectMonth(BuildContext context) async {
+    final state = context.read<StatisticsCubit>().state;
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: selectedMonth,
+      initialDate: DateTime(state.selectedYear, state.selectedMonth),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       initialDatePickerMode: DatePickerMode.year,
     );
     if (picked != null) {
-      setState(() {
-        selectedMonth = DateTime(picked.year, picked.month);
-      });
+      context.read<StatisticsCubit>().changeYear(picked.year);
+      context.read<StatisticsCubit>().changeMonth(picked.month);
     }
   }
 }

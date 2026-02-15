@@ -10,7 +10,9 @@ import 'package:expense_tracker/features/auth/presentation/widgets/signup/passwo
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/signup_button.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/signup_header.dart';
 import 'package:expense_tracker/features/auth/presentation/widgets/signup/login_redirect.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/login_screen.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
+import 'package:expense_tracker/core/di/injection.dart';
+import 'package:go_router/go_router.dart';
 
 /// شاشة التسجيل للحساب التجاري - Refactored
 class BusinessSignupScreen extends StatefulWidget {
@@ -55,16 +57,11 @@ class _BusinessSignupScreenState extends State<BusinessSignupScreen> {
     final theme = Theme.of(context);
 
     return BlocProvider(
-      create: (context) => SignupCubit(),
+      create: (context) => getIt<SignupCubit>(),
       child: BlocConsumer<SignupCubit, SignupState>(
         listener: (context, state) {
           if (state.isSuccess) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => const SimpleLoginScreen(),
-              ),
-              (route) => false,
-            );
+            context.go(AppRoutes.login);
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -187,11 +184,7 @@ class _BusinessSignupScreenState extends State<BusinessSignupScreen> {
                       LoginRedirect(
                         isRTL: isRTL,
                         onLoginPressed: () {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (context) => const SimpleLoginScreen(),
-                            ),
-                          );
+                          context.go(AppRoutes.login);
                         },
                       ),
                     ],

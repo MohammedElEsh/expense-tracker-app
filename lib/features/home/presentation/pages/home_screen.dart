@@ -11,8 +11,6 @@ import 'package:expense_tracker/features/home/presentation/widgets/home_summary_
 import 'package:expense_tracker/features/home/presentation/widgets/home_expense_list.dart';
 import 'package:expense_tracker/features/home/presentation/widgets/view_mode_selector.dart';
 import 'package:expense_tracker/features/home/presentation/widgets/home_logout_dialog.dart';
-import 'package:expense_tracker/features/home/domain/usecases/filter_expenses_by_view_mode_usecase.dart';
-import 'package:expense_tracker/features/home/domain/usecases/calculate_total_amount_usecase.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
@@ -23,13 +21,20 @@ import 'package:expense_tracker/features/users/presentation/cubit/user_state.dar
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_state.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/add_expense_dialog.dart';
-import 'package:expense_tracker/features/accounts/presentation/pages/accounts_screen.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/login_screen.dart';
+import 'package:expense_tracker/features/projects/data/models/project.dart' as project_data;
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_state.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_state.dart';
+import 'package:expense_tracker/core/di/injection.dart';
 import 'package:expense_tracker/features/expenses/presentation/widgets/search_filter_widget.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
-import 'package:expense_tracker/core/widgets/app_drawer.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
+import 'package:expense_tracker/app/widgets/app_drawer.dart';
+import 'package:go_router/go_router.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,12 +48,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Use Cases
-  final FilterExpensesByViewModeUseCase _filterExpensesUseCase =
-      FilterExpensesByViewModeUseCase();
-  final CalculateTotalAmountUseCase _calculateTotalUseCase =
-      CalculateTotalAmountUseCase();
-
+  /// Search-filtered list; used only when isSearchVisible is true.
   List<Expense> filteredExpenses = [];
 
   @override
@@ -90,21 +90,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  // تسجيل الخروج الفعلي (بدون dialog - يُستخدم من Drawer)
+  /// Logout: only trigger HomeCubit; navigation on success is done in BlocListener.
   void _performLogout(BuildContext homeContext) {
-    // استخدام HomeCubit لتسجيل الخروج
     homeContext.read<HomeCubit>().logout();
-
-    // تسجيل الخروج من UserCubit
-    homeContext.read<UserCubit>().logoutUser();
-
-    // الانتقال لشاشة تسجيل الدخول
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const SimpleLoginScreen()),
-        (route) => false,
-      );
-    }
   }
 
   // فتح dialog إضافة مصروف
@@ -125,11 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ? 'إضافة'
                       : 'Add',
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AccountsScreen(),
-                  ),
-                );
+                context.push(AppRoutes.accounts);
               },
             ),
           ),
@@ -138,10 +122,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return;
     }
 
-    // إذا يوجد حسابات، افتح Dialog الإضافة
-    Navigator.of(context).pushWithAnimation(
-      AddExpenseDialog(selectedDate: homeState.selectedDate),
-      animationType: AnimationType.slideUp,
+    final projectCubit = context.read<ProjectCubit>();
+    final vendorCubit = context.read<VendorCubit>();
+    final projectState = projectCubit.state;
+    final projectEntities = projectState is ProjectLoaded
+        ? projectState.projects
+            .where((p) =>
+                p.status != ProjectStatus.cancelled &&
+                p.status != ProjectStatus.completed)
+            .toList()
+        : <ProjectEntity>[];
+    final projects = projectEntities
+        .map((p) => project_data.Project(
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              status: project_data.ProjectStatus.values.firstWhere(
+                (s) => s.name == p.status.name,
+                orElse: () => project_data.ProjectStatus.planning,
+              ),
+              startDate: p.startDate,
+              endDate: p.endDate,
+              budget: p.budget,
+              spentAmount: p.spentAmount,
+              managerName: p.managerName,
+              clientName: p.clientName,
+              priority: p.priority,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+            ))
+        .toList();
+    final vendorState = vendorCubit.state;
+    final vendorNames = vendorState is VendorLoaded
+        ? vendorState.vendors.map((v) => v.name).toList()
+        : <String>[];
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AddExpenseDialog.createWithCubit(
+        ctx,
+        selectedDate: homeState.selectedDate,
+        projects: projects,
+        vendorNames: vendorNames,
+      ),
     );
   }
 
@@ -211,10 +234,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => HomeCubit(),
-      child: BlocBuilder<HomeCubit, HomeState>(
-        builder: (context, homeState) {
-          return BlocBuilder<SettingsCubit, SettingsState>(
+      create: (context) => getIt<HomeCubit>(),
+      child: BlocListener<HomeCubit, HomeState>(
+        listenWhen: (prev, curr) =>
+            prev.isLoggingOut && !curr.isLoggingOut && curr.logoutError == null,
+        listener: (context, state) {
+          if (!mounted) return;
+          context.go(AppRoutes.login);
+        },
+        child: BlocBuilder<HomeCubit, HomeState>(
+          builder: (context, homeState) {
+            return BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, settings) {
               return BlocBuilder<ExpenseCubit, ExpenseState>(
                 builder: (context, expenseState) {
@@ -226,7 +256,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           final isTablet =
                               MediaQuery.of(context).size.width > 600;
                           final isDesktop = context.isDesktop;
-                          final currentUser = userState.currentUser;
+                          final currentUser = userState is UserLoaded
+                              ? userState.currentUser
+                              : null;
 
                           // Only owner role should filter by selected account
                           // All other roles (accountant, employee, auditor) should see all expenses
@@ -278,29 +310,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             );
                           }
 
-                          // استخدام UseCase للفلترة - مع فلترة حسب الحساب المحدد
-                          // Only filter if selected account has expenses to prevent empty list
-                          final displayExpenses = _filterExpensesUseCase.call(
-                            allExpenses: expenseState.allExpenses,
-                            viewMode: homeState.viewMode,
-                            selectedDate: homeState.selectedDate,
-                            accountId:
-                                shouldFilterByAccount
-                                    ? selectedAccountId
-                                    : null,
-                          );
+                          // HomeCubit runs filter and total use cases; only emits when result changes
+                          context.read<HomeCubit>().updateDisplayData(
+                                expenseState.allExpenses,
+                                accountId:
+                                    shouldFilterByAccount
+                                        ? selectedAccountId
+                                        : null,
+                              );
+
+                          final displayExpenses = homeState.filteredExpenses;
+                          final totalAmount = homeState.totalAmount;
 
                           debugPrint(
                             '🏠 HomeScreen - Display expenses after filtering: ${displayExpenses.length}',
                           );
 
-                          // استخدام UseCase لحساب الإجمالي
-                          final totalAmount = _calculateTotalUseCase.call(
-                            displayExpenses,
-                          );
-
-                          // Use filtered expenses if search is active, otherwise use calculated expenses
-                          // Note: Expenses are already filtered by account in displayExpenses and filteredExpenses
+                          // Use search-filtered list when search is visible, else view-mode filtered
                           final finalDisplayExpenses =
                               homeState.isSearchVisible
                                   ? filteredExpenses
@@ -512,6 +538,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             },
           );
         },
+      ),
       ),
     );
   }

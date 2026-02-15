@@ -1,5 +1,6 @@
 // Settings - Data Management Card Widget
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
@@ -29,11 +30,11 @@ class DataManagementCard extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.pop(false),
                 child: Text(isRTL ? 'إلغاء' : 'Cancel'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.pop(true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
@@ -172,6 +173,10 @@ class DataManagementCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                    ).copyWith(
+                      textStyle: WidgetStateProperty.all(
+                        const TextStyle(inherit: false),
+                      ),
                     ),
                   );
                 },
@@ -193,6 +198,10 @@ class DataManagementCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                ).copyWith(
+                  textStyle: WidgetStateProperty.all(
+                    const TextStyle(inherit: false),
                   ),
                 ),
               ),
@@ -219,11 +228,11 @@ class DataManagementCard extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.pop(false),
                 child: Text(isRTL ? 'إلغاء' : 'Cancel'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.pop(true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,

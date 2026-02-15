@@ -1,9 +1,7 @@
-// Settings - Currency Settings Card Widget
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
 import 'modern_settings_card.dart';
 
 class CurrencySettingsCard extends StatelessWidget {
@@ -60,8 +58,8 @@ class CurrencySettingsCard extends StatelessWidget {
                     : null,
           ),
           items:
-              SettingsService.availableCurrencies.map((currencyCode) {
-                final symbol = SettingsService.getCurrencySymbol(currencyCode);
+              settings.availableCurrencies.map((currencyCode) {
+                final symbol = settings.symbolFor(currencyCode);
                 return DropdownMenuItem(
                   value: currencyCode,
                   child: Text('$currencyCode ($symbol)'),

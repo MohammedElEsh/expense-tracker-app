@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart' as router;
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
@@ -8,25 +10,32 @@ import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cub
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
 import 'package:expense_tracker/features/budgets/presentation/cubit/budget_cubit.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/core/services/permission_service.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
+import 'package:expense_tracker/features/users/domain/utils/permission_service.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/home/presentation/pages/home_screen.dart';
-import 'package:expense_tracker/features/statistics/presentation/pages/statistics_screen.dart';
-import 'package:expense_tracker/features/budgets/presentation/pages/budget_management_screen.dart';
-import 'package:expense_tracker/features/settings/presentation/pages/settings_screen.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/signup_screen.dart';
+import 'package:expense_tracker/core/di/injection.dart';
+import 'package:expense_tracker/core/storage/pref_helper.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
+import 'package:expense_tracker/core/state/user_context_manager.dart';
+import 'package:expense_tracker/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final Widget child;
+  final String currentLocation;
+
+  const MainScreen({
+    super.key,
+    required this.child,
+    required this.currentLocation,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
   bool _isInitializing = true;
 
   String? _lastLoadedUserId;
@@ -40,38 +49,78 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  /// Load data for current user
-  /// Ensures data is reloaded when user changes (but not on initial app load)
-  /// Initial load is handled in _AuthStateHandler._loadInitialData() which sets hasLoaded flags
+  /// Load data for current user. Bootstraps from API when in shell with valid token but no user in cubit (cold start).
   void _loadDataForCurrentUser() {
-    final currentUser = context.read<UserCubit>().state.currentUser;
+    final state = context.read<UserCubit>().state;
+    final currentUser = state is UserLoaded ? state.currentUser : null;
 
-    // Only reload if user actually changed (not on initial load)
-    // Initial load is handled centrally in _AuthStateHandler._loadInitialData()
     if (currentUser != null && _lastLoadedUserId != currentUser.id) {
       debugPrint(
         '🔄 User changed - Loading data for user: ${currentUser.id} (role: ${currentUser.role.name})',
       );
-
-      // Force refresh all data when user changes to ensure fresh data for new user context
       context.read<AccountCubit>().initializeAccounts();
       context.read<ExpenseCubit>().loadExpenses(forceRefresh: true);
       context.read<BudgetCubit>().loadBudgets();
       context.read<RecurringExpenseCubit>().loadRecurringExpenses();
-
-      // Update last loaded user ID
       _lastLoadedUserId = currentUser.id;
     } else if (currentUser == null && _lastLoadedUserId != null) {
-      // User logged out - clear loaded user ID
       _lastLoadedUserId = null;
+    } else if (currentUser == null) {
+      _bootstrapUserFromToken();
+      return;
     }
 
-    // ⏳ إزالة حالة التهيئة بعد 500ms
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() => _isInitializing = false);
-      }
+      if (mounted) setState(() => _isInitializing = false);
     });
+  }
+
+  Future<void> _bootstrapUserFromToken() async {
+    final token = await getIt<PrefHelper>().getAuthToken();
+    if (token == null || token.isEmpty || !mounted) return;
+    try {
+      final user = await getIt<AuthRemoteDataSource>().getCurrentUser();
+      final appContext = getIt<AppContext>();
+      if (user.accountType == 'business') {
+        await appContext.setAppMode(AppMode.business);
+        if (user.companyId != null) await appContext.setCompanyId(user.companyId);
+      } else {
+        await appContext.setAppMode(AppMode.personal);
+        await appContext.setCompanyId(null);
+      }
+      if (!mounted) return;
+      final roleStr = (user.role ?? 'owner').toLowerCase();
+      final userRole = UserRole.values.firstWhere(
+        (r) => r.name == roleStr,
+        orElse: () => UserRole.owner,
+      );
+      await userContextManager.onUserContextChanged(
+        userId: user.id,
+        role: userRole,
+        companyId: user.companyId,
+        context: context,
+      );
+      if (!mounted) return;
+      final entity = UserEntity(
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: userRole,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLogin,
+        phone: user.phone,
+      );
+      context.read<UserCubit>().setCurrentUser(entity);
+      context.read<SettingsCubit>().loadSettings(forceReload: true);
+      context.read<AccountCubit>().initializeAccounts();
+      context.read<ExpenseCubit>().loadExpenses(forceRefresh: true);
+      final now = DateTime.now();
+      context.read<BudgetCubit>().loadBudgetsForMonth(now.year, now.month);
+      context.read<RecurringExpenseCubit>().loadRecurringExpenses();
+      context.read<UserCubit>().loadUsers();
+    } catch (_) {}
+    if (mounted) setState(() => _isInitializing = false);
   }
 
   @override
@@ -92,37 +141,22 @@ class _MainScreenState extends State<MainScreen> {
           builder: (context, settings) {
             return BlocBuilder<UserCubit, UserState>(
               builder: (context, userState) {
-                // التحقق من تسجيل الدخول
-                if (userState.currentUser == null) {
-                  // ⏳ إذا كنا في مرحلة التهيئة، عرض شاشة تحميل
-                  if (_isInitializing) {
-                    return const Scaffold(
-                      body: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  // ❌ إذا لم يكن هناك مستخدم بعد التهيئة، الرجوع للشاشة الترحيبية
-                  return const WelcomeScreen();
+                final currentUser = userState is UserLoaded ? userState.currentUser : null;
+                if (currentUser == null && _isInitializing) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
                 }
 
                 final isRTL = settings.language == 'ar';
-                final currentUser = userState.currentUser;
+                final budgetAvailable =
+                    settings.appMode == AppMode.personal ||
+                    (settings.appMode == AppMode.business &&
+                        currentUser != null &&
+                        PermissionService.canManageBudgetsEntity(currentUser));
 
-                // Define screens based on app mode and user permissions
-                final screens = <Widget>[
-                  const HomeScreen(),
-                  const StatisticsScreen(),
-                  // Budget Management available in both modes
-                  // - Personal: Everyone can manage budgets
-                  // - Business: Only users with permission
-                  if (settings.appMode == AppMode.personal ||
-                      (settings.appMode == AppMode.business &&
-                          currentUser != null &&
-                          PermissionService.canManageBudgets(currentUser)))
-                    const BudgetManagementScreen(),
-                  const SettingsScreen(),
-                ];
+                final adjustedIndex = _indexFromPath(widget.currentLocation, budgetAvailable);
 
-                // Define bottom navigation items based on app mode and permissions
                 final bottomNavItems = <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.home),
@@ -132,11 +166,7 @@ class _MainScreenState extends State<MainScreen> {
                     icon: const Icon(Icons.analytics),
                     label: isRTL ? 'الإحصائيات' : 'Statistics',
                   ),
-                  // Budget available in both modes
-                  if (settings.appMode == AppMode.personal ||
-                      (settings.appMode == AppMode.business &&
-                          currentUser != null &&
-                          PermissionService.canManageBudgets(currentUser)))
+                  if (budgetAvailable)
                     BottomNavigationBarItem(
                       icon: const Icon(Icons.account_balance_wallet),
                       label: isRTL ? 'الميزانية' : 'Budget',
@@ -147,41 +177,30 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ];
 
-                // Adjust current index if budget screen is not available
-                final adjustedIndex = _adjustIndexForPermissions(
-                  _currentIndex,
-                  currentUser,
-                  settings.appMode,
-                );
-
-                // 🖥️ استخدام تخطيط مختلف بناءً على نوع الجهاز
                 final isDesktop = ResponsiveUtils.isDesktop(context);
 
                 return PopScope(
                   canPop: adjustedIndex == 0,
                   onPopInvokedWithResult: (didPop, result) {
                     if (!didPop && adjustedIndex != 0) {
-                      setState(() {
-                        _currentIndex = 0;
-                      });
+                      context.go(router.AppRoutes.home);
                     }
                   },
-                  child:
-                      isDesktop
-                          ? _buildDesktopLayout(
-                            screens,
-                            adjustedIndex,
-                            isRTL,
-                            currentUser,
-                            settings.appMode,
-                          )
-                          : _buildMobileLayout(
-                            screens,
-                            bottomNavItems,
-                            adjustedIndex,
-                            currentUser,
-                            settings.appMode,
-                          ),
+                  child: isDesktop
+                      ? _buildDesktopLayout(
+                          adjustedIndex,
+                          isRTL,
+                          currentUser,
+                          settings.appMode,
+                          budgetAvailable,
+                        )
+                      : _buildMobileLayout(
+                          bottomNavItems,
+                          adjustedIndex,
+                          currentUser,
+                          settings.appMode,
+                          budgetAvailable,
+                        ),
                 );
               },
             );
@@ -191,61 +210,47 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  int _adjustIndexForPermissions(
-    int originalIndex,
-    User? currentUser,
-    AppMode appMode,
-  ) {
-    // If budget management is not available, adjust indices
-    final budgetAvailable =
-        appMode == AppMode.personal ||
-        (appMode == AppMode.business &&
-            currentUser != null &&
-            PermissionService.canManageBudgets(currentUser));
-
-    if (!budgetAvailable) {
-      if (originalIndex >= 2) {
-        return originalIndex - 1;
-      }
+  int _indexFromPath(String path, bool budgetAvailable) {
+    switch (path) {
+      case router.AppRoutes.home:
+        return 0;
+      case router.AppRoutes.statistics:
+        return 1;
+      case router.AppRoutes.budgets:
+        return budgetAvailable ? 2 : 1;
+      case router.AppRoutes.settings:
+        return budgetAvailable ? 3 : 2;
+      default:
+        return 0;
     }
-    return originalIndex;
   }
 
-  int _getOriginalIndex(int adjustedIndex, User? currentUser, AppMode appMode) {
-    // Convert adjusted index back to original index
-    final budgetAvailable =
-        appMode == AppMode.personal ||
-        (appMode == AppMode.business &&
-            currentUser != null &&
-            PermissionService.canManageBudgets(currentUser));
-
-    if (!budgetAvailable) {
-      if (adjustedIndex >= 2) {
-        return adjustedIndex + 1;
-      }
+  void _onTabSelected(int adjustedIndex, bool budgetAvailable) {
+    if (adjustedIndex == 0) {
+      context.go(router.AppRoutes.home);
+    } else if (adjustedIndex == 1) {
+      context.go(router.AppRoutes.statistics);
+    } else if (budgetAvailable && adjustedIndex == 2) {
+      context.go(router.AppRoutes.budgets);
+    } else {
+      context.go(router.AppRoutes.settings);
     }
-    return adjustedIndex;
   }
 
   /// 🖥️ Desktop Layout with NavigationRail
   Widget _buildDesktopLayout(
-    List<Widget> screens,
     int adjustedIndex,
     bool isRTL,
-    User? currentUser,
+    UserEntity? currentUser,
     AppMode appMode,
+    bool budgetAvailable,
   ) {
     return Scaffold(
       body: Row(
         children: [
-          // NavigationRail للديسكتوب
           NavigationRail(
             selectedIndex: adjustedIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                _currentIndex = _getOriginalIndex(index, currentUser, appMode);
-              });
-            },
+            onDestinationSelected: (index) => _onTabSelected(index, budgetAvailable),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -266,10 +271,7 @@ class _MainScreenState extends State<MainScreen> {
                 selectedIcon: const Icon(Icons.analytics),
                 label: Text(isRTL ? 'الإحصائيات' : 'Statistics'),
               ),
-              if (appMode == AppMode.personal ||
-                  (appMode == AppMode.business &&
-                      currentUser != null &&
-                      PermissionService.canManageBudgets(currentUser)))
+              if (budgetAvailable)
                 NavigationRailDestination(
                   icon: const Icon(Icons.account_balance_wallet_outlined),
                   selectedIcon: const Icon(Icons.account_balance_wallet),
@@ -283,14 +285,13 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
           const VerticalDivider(thickness: 1, width: 1),
-          // المحتوى الرئيسي
           Expanded(
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: ResponsiveUtils.getMaxContentWidth(context),
                 ),
-                child: IndexedStack(index: adjustedIndex, children: screens),
+                child: widget.child,
               ),
             ),
           ),
@@ -301,21 +302,14 @@ class _MainScreenState extends State<MainScreen> {
 
   /// 📱 Mobile/Tablet Layout with BottomNavigationBar
   Widget _buildMobileLayout(
-    List<Widget> screens,
     List<BottomNavigationBarItem> bottomNavItems,
     int adjustedIndex,
-    User? currentUser,
+    UserEntity? currentUser,
     AppMode appMode,
+    bool budgetAvailable,
   ) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: IndexedStack(
-          key: ValueKey(adjustedIndex),
-          index: adjustedIndex,
-          children: screens,
-        ),
-      ),
+      body: widget.child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -328,11 +322,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: adjustedIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = _getOriginalIndex(index, currentUser, appMode);
-            });
-          },
+          onTap: (index) => _onTabSelected(index, budgetAvailable),
           type: BottomNavigationBarType.fixed,
           items: bottomNavItems,
         ),

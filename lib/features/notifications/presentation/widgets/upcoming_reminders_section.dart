@@ -3,7 +3,7 @@ import 'package:expense_tracker/features/notifications/presentation/widgets/noti
 import 'package:expense_tracker/features/notifications/presentation/widgets/notification_info_banner.dart';
 import 'package:expense_tracker/features/notifications/presentation/widgets/upcoming_reminder_item.dart';
 import 'package:expense_tracker/features/notifications/presentation/widgets/upcoming_reminder_tile.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_state.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +36,7 @@ class UpcomingRemindersSection extends StatelessWidget {
     return BlocBuilder<RecurringExpenseCubit, RecurringExpenseState>(
       builder: (context, state) {
         final expenses =
-            state.hasLoaded ? state.allRecurringExpenses : <RecurringExpense>[];
+            state.hasLoaded ? state.allRecurringExpenses : <RecurringExpenseEntity>[];
         final items = UpcomingItemsBuilder.build(expenses);
 
         return Column(

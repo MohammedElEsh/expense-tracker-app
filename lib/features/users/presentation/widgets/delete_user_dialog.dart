@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class DeleteUserDialog extends StatelessWidget {
   const DeleteUserDialog({
@@ -34,11 +35,11 @@ class DeleteUserDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => context.pop(false),
           child: Text(isRTL ? 'إلغاء' : 'Cancel'),
         ),
         TextButton(
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () => context.pop(true),
           style: TextButton.styleFrom(foregroundColor: Colors.red),
           child: Text(isRTL ? 'حذف' : 'Delete'),
         ),

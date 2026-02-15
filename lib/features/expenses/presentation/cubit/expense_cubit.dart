@@ -1,19 +1,28 @@
-// ✅ Clean Architecture - Presentation Cubit
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
-import 'package:expense_tracker/features/expenses/data/datasources/expense_api_service.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'expense_state.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/add_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/delete_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/get_expenses_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/update_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
 
 class ExpenseCubit extends Cubit<ExpenseState> {
-  final ExpenseApiService _expenseApiService;
+  ExpenseCubit({
+    required GetExpensesUseCase getExpensesUseCase,
+    required AddExpenseUseCase addExpenseUseCase,
+    required UpdateExpenseUseCase updateExpenseUseCase,
+    required DeleteExpenseUseCase deleteExpenseUseCase,
+  })  : _getExpenses = getExpensesUseCase,
+        _addExpense = addExpenseUseCase,
+        _updateExpense = updateExpenseUseCase,
+        _deleteExpense = deleteExpenseUseCase,
+        super(const ExpenseState());
 
-  ExpenseCubit({ExpenseApiService? expenseApiService})
-    : _expenseApiService =
-          expenseApiService ?? serviceLocator.expenseApiService,
-      super(const ExpenseState());
+  final GetExpensesUseCase _getExpenses;
+  final AddExpenseUseCase _addExpense;
+  final UpdateExpenseUseCase _updateExpense;
+  final DeleteExpenseUseCase _deleteExpense;
 
   Future<void> loadExpenses({bool forceRefresh = false}) async {
     // Guard: Skip if already loading or already loaded with data (unless forceRefresh)
@@ -41,24 +50,8 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     );
 
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
-
-      debugPrint('🔄 تحميل المصروفات - الوضع: ${currentAppMode.name}');
-      debugPrint('🔄 تحميل المصروفات - companyId: $companyId');
-      debugPrint(
-        '   Role-based filtering handled by backend via authentication token',
-      );
-
-      // Load expenses from API
-      // The API handles filtering by:
-      // - appMode and companyId (from SettingsService)
-      // - User role (from authentication token):
-      //   * Owner/Accountant: All company expenses
-      //   * Employee: Only their own expenses (where employeeId matches)
-      //   * Auditor: Read-only access to all expenses
       debugPrint('🔄 ExpenseCubit - Fetching expenses from API...');
-      final allExpenses = await _expenseApiService.getExpenses();
+      final allExpenses = await _getExpenses();
 
       debugPrint(
         '📊 ExpenseCubit - API returned ${allExpenses.length} expenses',
@@ -165,8 +158,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     try {
       debugPrint('💰 Creating expense via API...');
 
-      // Create expense via API (get server response with real ID if needed)
-      final createdExpense = await _expenseApiService.createExpense(
+      final createdExpense = await _addExpense(
         accountId: expense.accountId,
         amount: expense.amount,
         category: expense.category,
@@ -250,8 +242,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     try {
       debugPrint('✏️ تعديل مصروف: ${expense.id}');
 
-      // Update expense via API
-      await _expenseApiService.updateExpense(
+      await _updateExpense(
         expense.id,
         accountId: expense.accountId,
         amount: expense.amount,
@@ -310,8 +301,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     try {
       debugPrint('🗑️ Deleting expense via API: $expenseId');
 
-      // Delete expense via API
-      await _expenseApiService.deleteExpense(expenseId);
+      await _deleteExpense(expenseId);
 
       debugPrint('✅ Expense deleted successfully from API: $expenseId');
 
@@ -357,10 +347,9 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     try {
       debugPrint('🗑️ حذف جميع المصروفات...');
 
-      // Get all expenses and delete them one by one
-      final expenses = await _expenseApiService.getExpenses();
+      final expenses = await _getExpenses();
       for (final expense in expenses) {
-        await _expenseApiService.deleteExpense(expense.id);
+        await _deleteExpense(expense.id);
       }
 
       debugPrint('✅ تم حذف جميع المصروفات');
@@ -533,7 +522,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
 
     try {
       debugPrint('🔄 RefreshExpenses - Fetching expenses from API...');
-      final allExpenses = await _expenseApiService.getExpenses();
+      final allExpenses = await _getExpenses();
 
       debugPrint(
         '📊 RefreshExpenses - API returned ${allExpenses.length} expenses',

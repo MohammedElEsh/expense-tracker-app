@@ -1,43 +1,32 @@
-// ✅ Weekly Statistics Tab - Extracted from Enhanced Statistics Screen
+// Weekly Statistics Tab: data from StatisticsCubit state only.
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/statistics/domain/entities/statistics_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class WeeklyStatisticsTab extends StatelessWidget {
-  final ExpenseState expenseState;
+  final StatisticsEntity? statistics;
   final SettingsState settings;
   final bool isRTL;
 
   const WeeklyStatisticsTab({
     super.key,
-    required this.expenseState,
+    required this.statistics,
     required this.settings,
     required this.isRTL,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Calculate weekly total
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final weekExpenses =
-        expenseState.allExpenses.where((expense) {
-          return expense.date.isAfter(startOfWeek) ||
-              expense.date.isAtSameMomentAs(startOfWeek);
-        }).toList();
-
-    final weeklyTotal = weekExpenses.fold<double>(
-      0.0,
-      (sum, expense) => sum + expense.amount,
-    );
+    final weeklyTotal = statistics?.totalAmount ?? 0.0;
+    final expenseCount = statistics?.expenseCount ?? 0;
+    final dailyTotals = statistics?.dailyTotalsForWeek ?? List.filled(7, 0.0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Summary Card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -80,16 +69,13 @@ class WeeklyStatisticsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${weekExpenses.length} ${isRTL ? 'مصروف' : 'expenses'}',
+                  '$expenseCount ${isRTL ? 'مصروف' : 'expenses'}',
                   style: const TextStyle(fontSize: 14, color: Colors.white70),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Line Chart - Daily expenses for the week
           Text(
             isRTL ? 'نفقات الأسبوع' : 'Weekly Expenses',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -129,11 +115,11 @@ class WeeklyStatisticsTab extends StatelessWidget {
             child: LineChart(
               LineChartData(
                 minY: 0,
-                maxY: _getMaxY(weekExpenses, startOfWeek),
+                maxY: _maxY(dailyTotals),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: _getMaxY(weekExpenses, startOfWeek) / 4,
+                  horizontalInterval: _maxY(dailyTotals) / 4,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
                       color:
@@ -141,7 +127,7 @@ class WeeklyStatisticsTab extends StatelessWidget {
                               ? Colors.grey.shade800
                               : Colors.grey.shade300,
                       strokeWidth: 1,
-                      dashArray: [5, 5],
+                      dashArray: const [5, 5],
                     );
                   },
                 ),
@@ -183,7 +169,10 @@ class WeeklyStatisticsTab extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: _buildLineChartSpots(weekExpenses, startOfWeek),
+                    spots: List.generate(
+                      7,
+                      (i) => FlSpot(i.toDouble(), dailyTotals.length > i ? dailyTotals[i] : 0.0),
+                    ),
                     isCurved: true,
                     color:
                         settings.isDarkMode
@@ -247,19 +236,13 @@ class WeeklyStatisticsTab extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 32),
-
-          // Daily Breakdown Section
           Text(
             isRTL ? 'تفاصيل المصروفات اليومية' : 'Daily Expense Details',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-
           const SizedBox(height: 16),
-
-          // Show message if no expenses
-          if (weekExpenses.isEmpty)
+          if (expenseCount == 0)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(40),
@@ -278,141 +261,52 @@ class WeeklyStatisticsTab extends StatelessWidget {
               ),
             )
           else
-            // List of expenses
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: weekExpenses.length,
-              itemBuilder: (context, index) {
-                final expense = weekExpenses[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                      child: const Icon(Icons.attach_money, color: Colors.blue),
-                    ),
-                    title: Text(
-                      expense.notes.isEmpty ? expense.category : expense.notes,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      '${expense.date.day}/${expense.date.month}/${expense.date.year}',
-                    ),
-                    trailing: Text(
-                      '${settings.currencySymbol} ${expense.amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
+            ...List.generate(7, (i) {
+              final dayNames = isRTL
+                  ? ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
+                  : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+              final value = dailyTotals.length > i ? dailyTotals[i] : 0.0;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text(dayNames[i], style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: Text(
+                    '${settings.currencySymbol} ${value.toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            }),
         ],
       ),
     );
   }
 
-  // Build line chart spots for each day of the week
-  List<FlSpot> _buildLineChartSpots(
-    List<dynamic> weekExpenses,
-    DateTime startOfWeek,
-  ) {
-    final Map<int, double> dailyTotals = {};
-
-    // Initialize all days with 0
-    for (int i = 0; i < 7; i++) {
-      dailyTotals[i] = 0.0;
-    }
-
-    // Calculate totals for each day
-    for (final expense in weekExpenses) {
-      final dayIndex = expense.date.difference(startOfWeek).inDays;
-      if (dayIndex >= 0 && dayIndex < 7) {
-        dailyTotals[dayIndex] = (dailyTotals[dayIndex] ?? 0) + expense.amount;
-      }
-    }
-
-    // Create spots for line chart
-    return List.generate(7, (index) {
-      final value = dailyTotals[index] ?? 0.0;
-      return FlSpot(index.toDouble(), value);
-    });
+  double _maxY(List<double> dailyTotals) {
+    if (dailyTotals.isEmpty) return 100.0;
+    final m = dailyTotals.reduce((a, b) => a > b ? a : b);
+    return m > 0 ? m * 1.2 : 100.0;
   }
 
-  // Get maximum Y value for chart scaling
-  double _getMaxY(List<dynamic> weekExpenses, DateTime startOfWeek) {
-    final Map<int, double> dailyTotals = {};
-
-    for (final expense in weekExpenses) {
-      final dayIndex = expense.date.difference(startOfWeek).inDays;
-      if (dayIndex >= 0 && dayIndex < 7) {
-        dailyTotals[dayIndex] = (dailyTotals[dayIndex] ?? 0) + expense.amount;
-      }
-    }
-
-    final maxValue =
-        dailyTotals.values.isNotEmpty
-            ? dailyTotals.values.reduce((a, b) => a > b ? a : b)
-            : 0.0;
-
-    // Prevent zero interval - return minimum value if no data
-    return maxValue > 0 ? maxValue * 1.2 : 100000;
-  }
-
-  // Build day title widget (short names)
   Widget _buildDayTitle(int dayIndex, bool isRTL) {
-    final days =
-        isRTL
-            ? ['اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد']
-            : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    if (dayIndex < 0 || dayIndex >= days.length) {
-      return const SizedBox.shrink();
-    }
-
+    final days = isRTL
+        ? ['اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت', 'أحد']
+        : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    if (dayIndex < 0 || dayIndex >= days.length) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Text(
         days[dayIndex],
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: Colors.grey,
-        ),
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey),
       ),
     );
   }
 
-  // Get full day name for tooltip
   String _getDayName(int dayIndex, bool isRTL) {
-    final days =
-        isRTL
-            ? [
-              'الإثنين',
-              'الثلاثاء',
-              'الأربعاء',
-              'الخميس',
-              'الجمعة',
-              'السبت',
-              'الأحد',
-            ]
-            : [
-              'Monday',
-              'Tuesday',
-              'Wednesday',
-              'Thursday',
-              'Friday',
-              'Saturday',
-              'Sunday',
-            ];
-
-    if (dayIndex < 0 || dayIndex >= days.length) {
-      return '';
-    }
-
+    final days = isRTL
+        ? ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
+        : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    if (dayIndex < 0 || dayIndex >= days.length) return '';
     return days[dayIndex];
   }
 }

@@ -1,7 +1,7 @@
 // Add Expense - Business Fields Widget
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
 
 class BusinessFields extends StatelessWidget {
   final bool isRTL;
@@ -12,7 +12,7 @@ class BusinessFields extends StatelessWidget {
   final TextEditingController vendorNameController;
   final List<String> availableVendors;
   final String? selectedEmployeeId;
-  final List<User> availableEmployees;
+  final List<UserEntity> availableEmployees;
   final Function(String?) onProjectChanged;
   final Function(String?) onEmployeeChanged;
   final Function(String)? onDepartmentChanged;

@@ -1,11 +1,11 @@
-// ✅ Clean Architecture - Company Details Screen
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/features/companies/data/models/company.dart';
-import 'package:expense_tracker/features/companies/data/datasources/company_api_service.dart';
+import 'package:expense_tracker/features/companies/domain/entities/company_entity.dart';
+import 'package:expense_tracker/features/companies/presentation/cubit/company_cubit.dart';
+import 'package:expense_tracker/features/companies/presentation/cubit/company_state.dart';
 import 'package:expense_tracker/features/companies/presentation/widgets/company_dialog.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
@@ -14,7 +14,7 @@ import 'package:expense_tracker/core/utils/theme_helper.dart';
 import 'package:intl/intl.dart';
 
 class CompanyDetailsScreen extends StatefulWidget {
-  final Company company;
+  final CompanyEntity company;
 
   const CompanyDetailsScreen({super.key, required this.company});
 
@@ -23,12 +23,7 @@ class CompanyDetailsScreen extends StatefulWidget {
 }
 
 class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
-  // Current company (can be updated after edit)
-  late Company _currentCompany;
-  bool _isLoading = false;
-
-  // API Service
-  CompanyApiService get _companyService => serviceLocator.companyService;
+  late CompanyEntity _currentCompany;
 
   @override
   void initState() {
@@ -36,30 +31,14 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
     _currentCompany = widget.company;
   }
 
-  Future<void> _refreshCompany() async {
-    setState(() => _isLoading = true);
-    try {
-      final company = await _companyService.getMyCompany(forceRefresh: true);
-      if (company != null && mounted) {
-        setState(() {
-          _currentCompany = company;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isRTL ? 'خطأ في تحديث البيانات: $e' : 'Error refreshing data: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  void _refreshFromState(CompanyState state) {
+    if (state is CompanyLoaded && state.company != null) {
+      setState(() => _currentCompany = state.company!);
     }
+  }
+
+  Future<void> _refreshCompany() async {
+    context.read<CompanyCubit>().loadCompany(forceRefresh: true);
   }
 
   Future<void> _editCompany() async {
@@ -68,135 +47,129 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
       builder: (context) => CompanyDialog(company: _currentCompany),
     );
 
-    if (result == true) {
-      await _refreshCompany();
+    if (result == true && mounted) {
+      _refreshFromState(context.read<CompanyCubit>().state);
+      final isRTL = context.read<SettingsCubit>().state.language == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isRTL ? 'تم تحديث الشركة بنجاح' : 'Company updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteCompany() async {
+    final isRTL = context.read<SettingsCubit>().state.language == 'ar';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isRTL ? 'تأكيد الحذف' : 'Confirm Delete'),
+        content: Text(
+          isRTL
+              ? 'هل أنت متأكد من حذف الشركة "${_currentCompany.name}"؟'
+              : 'Are you sure you want to delete company "${_currentCompany.name}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: Text(isRTL ? 'إلغاء' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => context.pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(isRTL ? 'حذف' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await context.read<CompanyCubit>().deleteCompany();
       if (mounted) {
-        final isRTL = context.read<SettingsCubit>().state.language == 'ar';
+        context.pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isRTL ? 'تم تحديث الشركة بنجاح' : 'Company updated successfully',
-            ),
-            backgroundColor: Colors.green,
+            content: Text(isRTL ? 'تم حذف الشركة بنجاح' : 'Company deleted successfully'),
           ),
         );
       }
     }
   }
 
-  Future<void> _deleteCompany() async {
-    final isRTL = context.read<SettingsCubit>().state.language == 'ar';
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(isRTL ? 'تأكيد الحذف' : 'Confirm Delete'),
-            content: Text(
-              isRTL
-                  ? 'هل أنت متأكد من حذف الشركة "${_currentCompany.name}"؟'
-                  : 'Are you sure you want to delete company "${_currentCompany.name}"?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(isRTL ? 'إلغاء' : 'Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: Text(isRTL ? 'حذف' : 'Delete'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _companyService.deleteCompany();
-        if (mounted) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                isRTL ? 'تم حذف الشركة بنجاح' : 'Company deleted successfully',
-              ),
-            ),
-          );
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<CompanyCubit, CompanyState>(
+      listener: (context, state) {
+        if (state is CompanyLoaded && state.company != null) {
+          setState(() => _currentCompany = state.company!);
         }
-      } catch (e) {
-        if (mounted) {
+        if (state is CompanyError && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                isRTL ? 'خطأ في حذف الشركة: $e' : 'Error deleting company: $e',
-              ),
+              content: Text(state.message),
               backgroundColor: Colors.red,
             ),
           );
         }
-      }
-    }
-  }
+      },
+      child: BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, settings) {
+          final isRTL = settings.language == 'ar';
+          final isDesktop = context.isDesktop;
+          final cubit = context.read<CompanyCubit>();
+          final state = cubit.state;
+          final isLoading = state is CompanyLoading;
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<SettingsCubit, SettingsState>(
-      builder: (context, settings) {
-        final isRTL = settings.language == 'ar';
-        final isDesktop = context.isDesktop;
-
-        return Directionality(
-          textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-          child: Scaffold(
-            backgroundColor: settings.surfaceColor,
-            appBar: AppBar(
-              backgroundColor: settings.primaryColor,
-              foregroundColor:
-                  settings.isDarkMode ? Colors.black : Colors.white,
-              elevation: 0,
-              title: Text(
-                isRTL ? 'تفاصيل الشركة' : 'Company Details',
-                style: TextStyle(
-                  fontSize: isDesktop ? 20 : 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              actions: [
-                if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  )
-                else
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _refreshCompany,
-                    tooltip: isRTL ? 'تحديث' : 'Refresh',
+          return Directionality(
+            textDirection: isRTL ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+            child: Scaffold(
+              backgroundColor: settings.surfaceColor,
+              appBar: AppBar(
+                backgroundColor: settings.primaryColor,
+                foregroundColor: settings.isDarkMode ? Colors.black : Colors.white,
+                elevation: 0,
+                title: Text(
+                  isRTL ? 'تفاصيل الشركة' : 'Company Details',
+                  style: TextStyle(
+                    fontSize: isDesktop ? 20 : 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: _editCompany,
-                  tooltip: isRTL ? 'تعديل' : 'Edit',
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: _deleteCompany,
-                  tooltip: isRTL ? 'حذف' : 'Delete',
-                ),
-              ],
-            ),
-            body:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
+                actions: [
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _refreshCompany,
+                      tooltip: isRTL ? 'تحديث' : 'Refresh',
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: _editCompany,
+                    tooltip: isRTL ? 'تعديل' : 'Edit',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: _deleteCompany,
+                    tooltip: isRTL ? 'حذف' : 'Delete',
+                  ),
+                ],
+              ),
+              body: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
                       padding: EdgeInsets.all(isDesktop ? 24 : 16),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
@@ -216,9 +189,10 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                         ),
                       ),
                     ),
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -250,11 +224,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.business,
-                    color: Colors.white,
-                    size: 32,
-                  ),
+                  child: const Icon(Icons.business, color: Colors.white, size: 32),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -271,10 +241,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
@@ -283,9 +250,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _currentCompany.isActive
-                                  ? Icons.check_circle
-                                  : Icons.cancel,
+                              _currentCompany.isActive ? Icons.check_circle : Icons.cancel,
                               size: 14,
                               color: Colors.white,
                             ),
@@ -339,8 +304,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
               _currentCompany.currency,
               settings,
             ),
-            if (_currentCompany.taxNumber != null &&
-                _currentCompany.taxNumber!.isNotEmpty)
+            if (_currentCompany.taxNumber != null && _currentCompany.taxNumber!.isNotEmpty)
               _buildInfoRow(
                 context,
                 Icons.badge,
@@ -348,8 +312,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                 _currentCompany.taxNumber!,
                 settings,
               ),
-            if (_currentCompany.phone != null &&
-                _currentCompany.phone!.isNotEmpty)
+            if (_currentCompany.phone != null && _currentCompany.phone!.isNotEmpty)
               _buildInfoRow(
                 context,
                 Icons.phone,
@@ -357,8 +320,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                 _currentCompany.phone!,
                 settings,
               ),
-            if (_currentCompany.address != null &&
-                _currentCompany.address!.isNotEmpty)
+            if (_currentCompany.address != null && _currentCompany.address!.isNotEmpty)
               _buildInfoRow(
                 context,
                 Icons.location_on,
@@ -380,9 +342,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
   }
 
   Widget _buildOwnerCard(SettingsState settings, bool isRTL) {
-    if (_currentCompany.ownerId == null) {
-      return const SizedBox.shrink();
-    }
+    if (_currentCompany.ownerId == null) return const SizedBox.shrink();
 
     return Card(
       elevation: 2,
@@ -406,11 +366,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: settings.primaryColor.withValues(alpha: 0.1),
-                  child: Icon(
-                    Icons.person,
-                    color: settings.primaryColor,
-                    size: 24,
-                  ),
+                  child: Icon(Icons.person, color: settings.primaryColor, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -428,19 +384,13 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _currentCompany.ownerId!.email,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: settings.secondaryTextColor,
-                        ),
+                        style: TextStyle(fontSize: 14, color: settings.secondaryTextColor),
                       ),
                       if (_currentCompany.ownerId!.phone != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           _currentCompany.ownerId!.phone!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: settings.secondaryTextColor,
-                          ),
+                          style: TextStyle(fontSize: 14, color: settings.secondaryTextColor),
                         ),
                       ],
                     ],
@@ -489,9 +439,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
                     context,
                     Icons.calendar_today,
                     isRTL ? 'تاريخ الإنشاء' : 'Created',
-                    DateFormat(
-                      'MMM dd, yyyy',
-                    ).format(_currentCompany.createdAt),
+                    DateFormat('MMM dd, yyyy').format(_currentCompany.createdAt),
                     settings,
                   ),
                 ),
@@ -522,10 +470,7 @@ class _CompanyDetailsScreenState extends State<CompanyDetailsScreen> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.tertiaryTextColor,
-                  ),
+                  style: TextStyle(fontSize: 12, color: context.tertiaryTextColor),
                 ),
                 const SizedBox(height: 2),
                 Text(

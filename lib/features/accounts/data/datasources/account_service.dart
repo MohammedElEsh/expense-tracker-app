@@ -1,33 +1,27 @@
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
 import 'package:expense_tracker/core/network/api_service.dart';
 import 'package:expense_tracker/core/storage/pref_helper.dart';
-import 'package:expense_tracker/features/accounts/data/models/account.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
+import 'package:expense_tracker/features/accounts/data/models/account_model.dart';
+import 'package:expense_tracker/features/accounts/domain/entities/account_type.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 
-// =============================================================================
-// ACCOUNT SERVICE - Clean Architecture Remote Data Source
-// =============================================================================
-
-/// Remote data source for accounts using REST API
-/// Uses core services: ApiService, PrefHelper
-/// No Firebase dependencies - pure REST API implementation
 class AccountService {
   final ApiService _apiService;
   final PrefHelper _prefHelper;
+  final AppContext _appContext;
 
-  // Cache for accounts
-  List<Account>? _cachedAccounts;
-
-  // Storage keys for local preferences
+  List<AccountModel>? _cachedAccounts;
   static const String _defaultAccountKey = 'default_account_id';
 
   AccountService({
     required ApiService apiService,
     required PrefHelper prefHelper,
-  }) : _apiService = apiService,
-       _prefHelper = prefHelper;
+    required AppContext appContext,
+  })  : _apiService = apiService,
+        _prefHelper = prefHelper,
+        _appContext = appContext;
 
   // ===========================================================================
   // CACHE MANAGEMENT
@@ -45,16 +39,15 @@ class AccountService {
 
   /// Load all accounts from API
   /// GET /api/accounts
-  Future<List<Account>> loadAccounts() async {
+  Future<List<AccountModel>> loadAccounts() async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint(
         '🔍 loadAccounts - Mode: $currentAppMode, Company: $companyId',
       );
 
-      // Build query parameters based on app mode
       final Map<String, dynamic> queryParams = {'appMode': currentAppMode.name};
 
       if (currentAppMode == AppMode.business && companyId != null) {
@@ -74,7 +67,7 @@ class AccountService {
 
         final accounts =
             data
-                .map((json) => Account.fromMap(json as Map<String, dynamic>))
+                .map((json) => AccountModel.fromMap(json as Map<String, dynamic>))
                 .toList();
 
         // Cache the accounts
@@ -115,31 +108,26 @@ class AccountService {
   /// }
   ///
   /// Response: { "success": true, "account": { ... } }
-  Future<Account> addAccount(Account account) async {
+  Future<AccountModel> addAccount(AccountModel account) async {
     try {
-      final currentAppMode = SettingsService.appMode;
-      final companyId = SettingsService.companyId;
+      final currentAppMode = _appContext.appMode;
+      final companyId = _appContext.companyId;
 
       debugPrint('➕ Creating account: ${account.name}');
 
-      // Get currency code from account (set by user in Settings)
-      // Convert to API-valid code if symbol was passed (ر.س → SAR)
-      final currencyCode = SettingsService.getCurrencyCode(account.currency);
+      final currencyCode = _appContext.getCurrencyCode(account.currency);
       debugPrint('💱 Currency: ${account.currency} → $currencyCode');
 
-      // Build request body with user-selected currency
       final Map<String, dynamic> requestBody = {
         'name': account.name,
-        'type': account.type.apiValue, // "cash", "bank", "credit", etc.
+        'type': account.type.apiValue,
         'balance': account.balance,
-        'currency':
-            currencyCode, // User-selected currency code (SAR, USD, EGP, etc.)
+        'currency': currencyCode,
         'isDefault': false,
         'description': account.description ?? '',
         'appMode': currentAppMode.name,
       };
 
-      // Add company ID for business mode
       if (currentAppMode == AppMode.business && companyId != null) {
         requestBody['companyId'] = companyId;
       }
@@ -171,7 +159,7 @@ class AccountService {
           throw ServerException('Invalid API response: missing account object');
         }
 
-        final newAccount = Account.fromMap(accountJson);
+        final newAccount = AccountModel.fromMap(accountJson);
 
         // Clear cache to force fresh reload
         clearCache();
@@ -196,7 +184,7 @@ class AccountService {
 
   /// Update an existing account
   /// PUT /api/accounts/:id
-  Future<Account> updateAccount(Account account) async {
+  Future<AccountModel> updateAccount(AccountModel account) async {
     try {
       debugPrint('🔄 Updating account: ${account.id}');
 
@@ -208,7 +196,7 @@ class AccountService {
       );
 
       if (response.statusCode == 200) {
-        final updatedAccount = Account.fromMap(
+        final updatedAccount = AccountModel.fromMap(
           response.data is Map
               ? response.data
               : response.data['account'] ?? response.data['data'],
@@ -283,7 +271,7 @@ class AccountService {
   }
 
   /// Get a single account by ID
-  Future<Account?> getAccount(String accountId) async {
+  Future<AccountModel?> getAccount(String accountId) async {
     try {
       if (accountId.isEmpty) {
         debugPrint('⚠️ Empty accountId - skipping fetch');
@@ -302,7 +290,7 @@ class AccountService {
       final response = await _apiService.get('/api/accounts/$accountId');
 
       if (response.statusCode == 200) {
-        return Account.fromMap(
+        return AccountModel.fromMap(
           response.data is Map
               ? response.data
               : response.data['account'] ?? response.data['data'],
@@ -321,7 +309,7 @@ class AccountService {
   // ===========================================================================
 
   /// Get active accounts only
-  Future<List<Account>> getActiveAccounts() async {
+  Future<List<AccountModel>> getActiveAccounts() async {
     final accounts = await loadAccounts();
     return accounts.where((account) => account.isActive).toList();
   }
@@ -421,7 +409,7 @@ class AccountService {
   }
 
   /// Get low balance accounts
-  Future<List<Account>> getLowBalanceAccounts() async {
+  Future<List<AccountModel>> getLowBalanceAccounts() async {
     final accounts = await getActiveAccounts();
     return accounts.where((account) => account.isLowBalance).toList();
   }
@@ -467,7 +455,7 @@ class AccountService {
   }
 
   /// Get default account
-  Future<Account?> getDefaultAccount() async {
+  Future<AccountModel?> getDefaultAccount() async {
     final defaultId = await getDefaultAccountId();
     if (defaultId != null) {
       // Validate ID format before making API call
@@ -553,7 +541,7 @@ class AccountService {
   // ===========================================================================
 
   /// Search accounts
-  Future<List<Account>> searchAccounts(String query) async {
+  Future<List<AccountModel>> searchAccounts(String query) async {
     final accounts = await loadAccounts();
 
     if (query.isEmpty) return accounts;

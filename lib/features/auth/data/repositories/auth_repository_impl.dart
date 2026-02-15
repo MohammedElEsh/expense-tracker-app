@@ -1,19 +1,23 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:expense_tracker/core/domain/app_context.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/features/auth/domain/repositories/auth_repository.dart';
 import 'package:expense_tracker/features/auth/domain/entities/user_entity.dart';
 import 'package:expense_tracker/features/auth/data/datasources/auth_remote_data_source.dart';
 
-/// Implementation of AuthRepository using REST API
 class AuthRepositoryImpl implements AuthRepository {
-  // Stream controller for auth state changes
   final StreamController<UserEntity?> _authStateController =
       StreamController<UserEntity?>.broadcast();
 
   final AuthRemoteDataSource _remoteDataSource;
+  final AppContext _appContext;
 
-  AuthRepositoryImpl({required AuthRemoteDataSource remoteDataSource})
-    : _remoteDataSource = remoteDataSource {
+  AuthRepositoryImpl({
+    required AuthRemoteDataSource remoteDataSource,
+    required AppContext appContext,
+  })  : _remoteDataSource = remoteDataSource,
+        _appContext = appContext {
     // Check initial auth state
     _checkInitialAuthState();
   }
@@ -108,13 +112,33 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
+      await _appContext.clearModeAndCompany();
       await _remoteDataSource.logout();
       _authStateController.add(null);
     } catch (e) {
-      // Always clear local state even if API fails
       _authStateController.add(null);
       debugPrint('⚠️ Logout completed with warning: $e');
     }
+  }
+
+  @override
+  Future<void> applyUserContext(UserEntity user) async {
+    if (user.accountType == 'business' &&
+        user.companyId != null &&
+        user.companyId!.isNotEmpty) {
+      await _appContext.setAppMode(
+        AppMode.business,
+      );
+      await _appContext.setCompanyId(user.companyId);
+    } else {
+      await _appContext.setAppMode(AppMode.personal);
+      await _appContext.setCompanyId(null);
+    }
+  }
+
+  @override
+  Future<void> clearAppContext() async {
+    await _appContext.clearModeAndCompany();
   }
 
   @override

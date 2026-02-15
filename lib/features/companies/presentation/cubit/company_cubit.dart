@@ -1,153 +1,101 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/companies/data/models/company.dart';
-import 'package:expense_tracker/features/companies/data/datasources/company_api_service.dart';
+import 'package:expense_tracker/features/companies/domain/entities/company_entity.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/create_company_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/delete_company_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/get_company_by_id_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/get_companies_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/update_company_usecase.dart';
 import 'package:expense_tracker/features/companies/presentation/cubit/company_state.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 
 class CompanyCubit extends Cubit<CompanyState> {
-  final CompanyApiService _companyApiService;
+  final GetCompaniesUseCase getCompaniesUseCase;
+  final GetCompanyByIdUseCase getCompanyByIdUseCase;
+  final CreateCompanyUseCase createCompanyUseCase;
+  final UpdateCompanyUseCase updateCompanyUseCase;
+  final DeleteCompanyUseCase deleteCompanyUseCase;
 
-  CompanyCubit({CompanyApiService? companyApiService})
-    : _companyApiService = companyApiService ?? serviceLocator.companyService,
-      super(const CompanyState());
+  CompanyCubit({
+    required this.getCompaniesUseCase,
+    required this.getCompanyByIdUseCase,
+    required this.createCompanyUseCase,
+    required this.updateCompanyUseCase,
+    required this.deleteCompanyUseCase,
+  }) : super(const CompanyInitial());
 
-  /// Load the current user's company
+  static String _messageFromError(Object error) {
+    final s = error.toString();
+    if (s.contains('NetworkException') || s.contains('SocketException')) {
+      return 'Network error. Please check your connection.';
+    }
+    if (s.contains('ServerException')) return 'Server error. Please try again later.';
+    if (s.contains('UnauthorizedException') || s.contains('401')) {
+      return 'Authentication failed. Please log in again.';
+    }
+    if (s.contains('ValidationException')) {
+      return s.replaceAll('Exception: ', '');
+    }
+    return s.replaceAll('Exception: ', '');
+  }
+
   Future<void> loadCompany({bool forceRefresh = false}) async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is CompanyLoading) return;
+    emit(const CompanyLoading());
     try {
-      debugPrint('🔄 Loading company...');
-      final company = await _companyApiService.getMyCompany(
-        forceRefresh: forceRefresh,
-      );
-
-      debugPrint('✅ Company loaded: ${company?.name ?? 'No company found'}');
-
-      emit(
-        state.copyWith(
-          company: company,
-          isLoading: false,
-          clearCompany: company == null,
-        ),
-      );
-    } catch (error) {
-      debugPrint('❌ Error loading company: $error');
-      String errorMessage = 'Failed to load company';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (error.toString().contains('UnauthorizedException') ||
-          error.toString().contains('401')) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else {
-        errorMessage =
-            'Failed to load company: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final company = await getCompaniesUseCase(forceRefresh: forceRefresh);
+      emit(CompanyLoaded(company: company));
+    } catch (e) {
+      debugPrint('CompanyCubit loadCompany error: $e');
+      emit(CompanyError(_messageFromError(e)));
     }
   }
 
-  /// Create a new company
-  Future<void> createCompany(Company company) async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  /// Load a single company by id (e.g. when opening details by id).
+  Future<void> loadCompanyById(String id) async {
+    if (state is CompanyLoading) return;
+    emit(const CompanyLoading());
     try {
-      debugPrint('➕ Creating company: ${company.name}');
-      final createdCompany = await _companyApiService.createCompany(company);
-
-      debugPrint('✅ Company created: ${createdCompany.id}');
-
-      emit(state.copyWith(company: createdCompany, isLoading: false));
-    } catch (error) {
-      debugPrint('❌ Error creating company: $error');
-      String errorMessage = 'Failed to create company';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ValidationException')) {
-        errorMessage = error.toString().replaceAll('Exception: ', '');
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to create company: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final company = await getCompanyByIdUseCase(id);
+      emit(CompanyLoaded(company: company));
+    } catch (e) {
+      debugPrint('CompanyCubit loadCompanyById error: $e');
+      emit(CompanyError(_messageFromError(e)));
     }
   }
 
-  /// Update the current company
-  Future<void> updateCompany(Company company) async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+  Future<void> createCompany(CompanyEntity company) async {
+    if (state is CompanyLoading) return;
+    emit(const CompanyLoading());
     try {
-      debugPrint('✏️ Updating company: ${company.id}');
-      final updatedCompany = await _companyApiService.updateCompany(company);
-
-      debugPrint('✅ Company updated: ${updatedCompany.id}');
-
-      emit(state.copyWith(company: updatedCompany, isLoading: false));
-    } catch (error) {
-      debugPrint('❌ Error updating company: $error');
-      String errorMessage = 'Failed to update company';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ValidationException')) {
-        errorMessage = error.toString().replaceAll('Exception: ', '');
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to update company: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      final created = await createCompanyUseCase(company);
+      emit(CompanyLoaded(company: created));
+    } catch (e) {
+      debugPrint('CompanyCubit createCompany error: $e');
+      emit(CompanyError(_messageFromError(e)));
     }
   }
 
-  /// Delete the current company
+  Future<void> updateCompany(CompanyEntity company) async {
+    if (state is CompanyLoading) return;
+    emit(const CompanyLoading());
+    try {
+      final updated = await updateCompanyUseCase(company);
+      emit(CompanyLoaded(company: updated));
+    } catch (e) {
+      debugPrint('CompanyCubit updateCompany error: $e');
+      emit(CompanyError(_messageFromError(e)));
+    }
+  }
+
   Future<void> deleteCompany() async {
-    if (state.isLoading) return;
-
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    if (state is CompanyLoading) return;
+    emit(const CompanyLoading());
     try {
-      debugPrint('🗑️ Deleting company...');
-      await _companyApiService.deleteCompany();
-
-      debugPrint('✅ Company deleted');
-
-      emit(state.copyWith(isLoading: false, clearCompany: true));
-    } catch (error) {
-      debugPrint('❌ Error deleting company: $error');
-      String errorMessage = 'Failed to delete company';
-
-      if (error.toString().contains('NetworkException') ||
-          error.toString().contains('SocketException')) {
-        errorMessage = 'Network error. Please check your connection.';
-      } else if (error.toString().contains('ServerException')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else {
-        errorMessage =
-            'Failed to delete company: ${error.toString().replaceAll('Exception: ', '')}';
-      }
-
-      emit(state.copyWith(isLoading: false, error: errorMessage));
+      await deleteCompanyUseCase();
+      emit(const CompanyLoaded(company: null));
+    } catch (e) {
+      debugPrint('CompanyCubit deleteCompany error: $e');
+      emit(CompanyError(_messageFromError(e)));
     }
   }
 }

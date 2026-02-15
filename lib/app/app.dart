@@ -1,23 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
+import 'package:expense_tracker/core/di/injection.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/add_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/delete_expense_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/get_expenses_usecase.dart';
+import 'package:expense_tracker/features/expenses/domain/usecases/update_expense_usecase.dart';
 import 'package:expense_tracker/features/expenses/presentation/cubit/expense_cubit.dart';
+import 'package:expense_tracker/features/settings/domain/usecases/get_settings_usecase.dart';
+import 'package:expense_tracker/features/settings/domain/usecases/update_settings_usecase.dart';
+import 'package:expense_tracker/features/settings/domain/usecases/reset_settings_usecase.dart';
+import 'package:expense_tracker/features/settings/domain/usecases/set_app_mode_usecase.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/add_to_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/create_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/delete_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/get_accounts_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/get_default_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/initialize_accounts_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/set_default_account_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/subtract_from_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/transfer_money_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/update_account_balance_usecase.dart';
+import 'package:expense_tracker/features/accounts/domain/usecases/update_account_usecase.dart';
 import 'package:expense_tracker/features/accounts/presentation/cubit/account_cubit.dart';
+import 'package:expense_tracker/features/budgets/domain/usecases/clear_budget_cache_usecase.dart';
+import 'package:expense_tracker/features/budgets/domain/usecases/create_budget_usecase.dart';
+import 'package:expense_tracker/features/budgets/domain/usecases/delete_budget_usecase.dart';
+import 'package:expense_tracker/features/budgets/domain/usecases/get_budgets_usecase.dart';
+import 'package:expense_tracker/features/budgets/domain/usecases/update_budget_usecase.dart';
 import 'package:expense_tracker/features/budgets/presentation/cubit/budget_cubit.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/create_company_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/delete_company_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/get_company_by_id_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/get_companies_usecase.dart';
+import 'package:expense_tracker/features/companies/domain/usecases/update_company_usecase.dart';
+import 'package:expense_tracker/features/companies/presentation/cubit/company_cubit.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/create_recurring_expense_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/delete_recurring_expense_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/disable_recurring_reminder_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/enable_recurring_reminder_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/get_recurring_expenses_usecase.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/usecases/update_recurring_expense_usecase.dart';
 import 'package:expense_tracker/features/recurring_expenses/presentation/cubit/recurring_expense_cubit.dart';
+import 'package:expense_tracker/features/statistics/domain/usecases/get_statistics_usecase.dart';
+import 'package:expense_tracker/features/statistics/presentation/cubit/statistics_cubit.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/create_vendor_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/delete_vendor_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/get_vendors_statistics_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/get_vendors_usecase.dart';
+import 'package:expense_tracker/features/vendors/domain/usecases/update_vendor_usecase.dart';
+import 'package:expense_tracker/features/vendors/presentation/cubit/vendor_cubit.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/create_project_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/delete_project_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_project_by_id_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_project_report_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_projects_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/get_projects_statistics_usecase.dart';
+import 'package:expense_tracker/features/projects/domain/usecases/update_project_usecase.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
+import 'package:expense_tracker/features/users/domain/usecases/create_user_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/delete_user_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/get_users_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/update_user_usecase.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_cubit.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
-import 'package:expense_tracker/features/auth/data/models/user_model.dart';
-import 'package:expense_tracker/app/pages/main_screen.dart';
-import 'package:expense_tracker/features/onboarding/presentation/pages/onboarding_screen.dart';
-import 'package:expense_tracker/features/onboarding/data/datasources/onboarding_service.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/login_screen.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/core/state/user_context_manager.dart';
+import 'package:expense_tracker/features/onboarding/presentation/cubit/onboarding_cubit.dart';
+import 'package:expense_tracker/features/subscriptions/domain/usecases/get_plans_usecase.dart';
+import 'package:expense_tracker/features/subscriptions/presentation/cubit/subscriptions_cubit.dart';
 
 class ExpenseTrackerApp extends StatelessWidget {
   const ExpenseTrackerApp({super.key});
@@ -31,26 +82,75 @@ class ExpenseTrackerApp extends StatelessWidget {
           create: (context) {
             debugPrint('🚀 Creating ExpenseCubit (data will load after auth)');
             return ExpenseCubit(
-              expenseApiService: serviceLocator.expenseApiService,
+              getExpensesUseCase: getIt<GetExpensesUseCase>(),
+              addExpenseUseCase: getIt<AddExpenseUseCase>(),
+              updateExpenseUseCase: getIt<UpdateExpenseUseCase>(),
+              deleteExpenseUseCase: getIt<DeleteExpenseUseCase>(),
             );
           },
         ),
         BlocProvider(
           create: (context) {
             debugPrint('🚀 Creating SettingsCubit (data will load after auth)');
-            return SettingsCubit(apiService: serviceLocator.settingsApiService);
+            return SettingsCubit(
+              getSettingsUseCase: getIt<GetSettingsUseCase>(),
+              updateSettingsUseCase: getIt<UpdateSettingsUseCase>(),
+              resetSettingsUseCase: getIt<ResetSettingsUseCase>(),
+              setAppModeUseCase: getIt<SetAppModeUseCase>(),
+            );
           },
         ),
         BlocProvider(
           create: (context) {
             debugPrint('🚀 Creating AccountCubit (data will load after auth)');
-            return AccountCubit();
+            return AccountCubit(
+              getAccountsUseCase: getIt<GetAccountsUseCase>(),
+              createAccountUseCase: getIt<CreateAccountUseCase>(),
+              updateAccountUseCase: getIt<UpdateAccountUseCase>(),
+              deleteAccountUseCase: getIt<DeleteAccountUseCase>(),
+              getDefaultAccountUseCase: getIt<GetDefaultAccountUseCase>(),
+              setDefaultAccountUseCase: getIt<SetDefaultAccountUseCase>(),
+              initializeAccountsUseCase: getIt<InitializeAccountsUseCase>(),
+              updateAccountBalanceUseCase: getIt<UpdateAccountBalanceUseCase>(),
+              addToAccountBalanceUseCase: getIt<AddToAccountBalanceUseCase>(),
+              subtractFromAccountBalanceUseCase:
+                  getIt<SubtractFromAccountBalanceUseCase>(),
+              transferMoneyUseCase: getIt<TransferMoneyUseCase>(),
+            );
           },
         ),
         BlocProvider(
           create: (context) {
             debugPrint('🚀 Creating BudgetCubit (data will load after auth)');
-            return BudgetCubit();
+            return BudgetCubit(
+              getBudgetsUseCase: getIt<GetBudgetsUseCase>(),
+              createBudgetUseCase: getIt<CreateBudgetUseCase>(),
+              updateBudgetUseCase: getIt<UpdateBudgetUseCase>(),
+              deleteBudgetUseCase: getIt<DeleteBudgetUseCase>(),
+              clearBudgetCacheUseCase: getIt<ClearBudgetCacheUseCase>(),
+            );
+          },
+        ),
+        BlocProvider(
+          create: (context) {
+            debugPrint(
+              '🚀 Creating StatisticsCubit (data will load when screen opens)',
+            );
+            return StatisticsCubit(
+              getStatisticsUseCase: getIt<GetStatisticsUseCase>(),
+            );
+          },
+        ),
+        BlocProvider(
+          create: (context) {
+            debugPrint('🚀 Creating CompanyCubit (data will load when needed)');
+            return CompanyCubit(
+              getCompaniesUseCase: getIt<GetCompaniesUseCase>(),
+              getCompanyByIdUseCase: getIt<GetCompanyByIdUseCase>(),
+              createCompanyUseCase: getIt<CreateCompanyUseCase>(),
+              updateCompanyUseCase: getIt<UpdateCompanyUseCase>(),
+              deleteCompanyUseCase: getIt<DeleteCompanyUseCase>(),
+            );
           },
         ),
         BlocProvider(
@@ -58,210 +158,115 @@ class ExpenseTrackerApp extends StatelessWidget {
             debugPrint(
               '🚀 Creating RecurringExpenseCubit (data will load after auth)',
             );
-            return RecurringExpenseCubit();
+            return RecurringExpenseCubit(
+              getRecurringExpensesUseCase: getIt<GetRecurringExpensesUseCase>(),
+              createRecurringExpenseUseCase:
+                  getIt<CreateRecurringExpenseUseCase>(),
+              updateRecurringExpenseUseCase:
+                  getIt<UpdateRecurringExpenseUseCase>(),
+              deleteRecurringExpenseUseCase:
+                  getIt<DeleteRecurringExpenseUseCase>(),
+              enableReminderUseCase: getIt<EnableRecurringReminderUseCase>(),
+              disableReminderUseCase: getIt<DisableRecurringReminderUseCase>(),
+            );
           },
         ),
         BlocProvider(
           create: (context) {
             debugPrint('🚀 Creating UserCubit (data will load after auth)');
-            return UserCubit();
+            return UserCubit(
+              getUsersUseCase: getIt<GetUsersUseCase>(),
+              createUserUseCase: getIt<CreateUserUseCase>(),
+              updateUserUseCase: getIt<UpdateUserUseCase>(),
+              deleteUserUseCase: getIt<DeleteUserUseCase>(),
+            );
+          },
+        ),
+        BlocProvider(
+          create: (context) {
+            debugPrint('🚀 Creating ProjectCubit (data will load when needed)');
+            return ProjectCubit(
+              getProjectsUseCase: getIt<GetProjectsUseCase>(),
+              getProjectByIdUseCase: getIt<GetProjectByIdUseCase>(),
+              createProjectUseCase: getIt<CreateProjectUseCase>(),
+              updateProjectUseCase: getIt<UpdateProjectUseCase>(),
+              deleteProjectUseCase: getIt<DeleteProjectUseCase>(),
+              getProjectReportUseCase: getIt<GetProjectReportUseCase>(),
+              getProjectsStatisticsUseCase:
+                  getIt<GetProjectsStatisticsUseCase>(),
+            );
+          },
+        ),
+        BlocProvider(create: (context) => getIt<OnboardingCubit>()),
+        BlocProvider(
+          create: (context) {
+            debugPrint('🚀 Creating SubscriptionsCubit');
+            return SubscriptionsCubit(
+              getPlansUseCase: getIt<GetPlansUseCase>(),
+            );
+          },
+        ),
+        BlocProvider(
+          create: (context) {
+            debugPrint('🚀 Creating VendorCubit (data will load when needed)');
+            return VendorCubit(
+              getVendorsUseCase: getIt<GetVendorsUseCase>(),
+              createVendorUseCase: getIt<CreateVendorUseCase>(),
+              updateVendorUseCase: getIt<UpdateVendorUseCase>(),
+              deleteVendorUseCase: getIt<DeleteVendorUseCase>(),
+              getVendorsStatisticsUseCase: getIt<GetVendorsStatisticsUseCase>(),
+            );
           },
         ),
       ],
-      child: BlocBuilder<SettingsCubit, SettingsState>(
-        builder: (context, settings) {
-          return MaterialApp(
-            title: 'Spendly',
-            theme: settings.themeData,
-            home: _AuthStateHandler(settings: settings),
-            debugShowCheckedModeBanner: false,
-            locale: Locale(settings.language),
-            supportedLocales: const [Locale('en', ''), Locale('ar', '')],
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-          );
-        },
-      ),
+      child: _AppRouterContent(),
     );
   }
 }
 
-/// Handles authentication state using REST API token
-class _AuthStateHandler extends StatefulWidget {
-  final SettingsState settings;
-
-  const _AuthStateHandler({required this.settings});
-
+/// Builds MaterialApp.router on first frame with default theme so the router
+/// is never blocked. Listens to SettingsCubit for theme/locale updates.
+class _AppRouterContent extends StatefulWidget {
   @override
-  State<_AuthStateHandler> createState() => _AuthStateHandlerState();
+  State<_AppRouterContent> createState() => _AppRouterContentState();
 }
 
-class _AuthStateHandlerState extends State<_AuthStateHandler> {
-  bool _isLoading = true;
-  bool _isAuthenticated = false;
-  String? _userId;
+class _AppRouterContentState extends State<_AppRouterContent> {
+  late ThemeData _theme;
+  late Locale _locale;
 
   @override
   void initState() {
     super.initState();
-    _checkAuthState();
-  }
-
-  Future<void> _checkAuthState() async {
-    try {
-      // Check if user has valid token
-      final token = await serviceLocator.prefHelper.getAuthToken();
-
-      if (token != null && token.isNotEmpty) {
-        // Try to get current user to validate token
-        try {
-          final user =
-              await serviceLocator.authRemoteDataSource.getCurrentUser();
-
-          // Save AppMode based on accountType from API
-          if (user.accountType == 'business') {
-            await SettingsService.setAppMode(AppMode.business);
-            if (user.companyId != null) {
-              await SettingsService.setCompanyId(user.companyId);
-            }
-            debugPrint('✅ Business mode set from API');
-          } else {
-            await SettingsService.setAppMode(AppMode.personal);
-            await SettingsService.setCompanyId(null);
-            debugPrint('✅ Personal mode set from API');
-          }
-
-          setState(() {
-            _isAuthenticated = true;
-            _userId = user.id;
-            _isLoading = false;
-          });
-
-          // Auto-login: Set current user in UserCubit and load initial data
-          if (mounted) {
-            await _setCurrentUserInCubit(user);
-            // Load initial data after authentication
-            _loadInitialData(context);
-          }
-
-          debugPrint('✅ User authenticated (auto-login): ${user.email}');
-          return;
-        } catch (e) {
-          debugPrint('⚠️ Token invalid or expired: $e');
-          // Token is invalid, clear it
-          await serviceLocator.authRemoteDataSource.logout();
-          await SettingsService.clearModeAndCompany();
-        }
-      }
-
-      setState(() {
-        _isAuthenticated = false;
-        _userId = null;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('❌ Error checking auth state: $e');
-      setState(() {
-        _isAuthenticated = false;
-        _userId = null;
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// Set the current user in UserCubit after successful auto-login
-  Future<void> _setCurrentUserInCubit(UserModel apiUser) async {
-    try {
-      // Parse user role from API response
-      final userRole = UserRole.values.firstWhere(
-        (role) => role.name == apiUser.role?.toLowerCase(),
-        orElse: () => UserRole.owner,
-      );
-
-      debugPrint(
-        '👤 Auto-login: User role from API: ${apiUser.role} -> ${userRole.name}',
-      );
-
-      // Clear state BEFORE setting new user (to prevent data leakage)
-      await userContextManager.onUserContextChanged(
-        userId: apiUser.id,
-        role: userRole,
-        companyId: apiUser.companyId,
-        context: context,
-      );
-
-      // Create User object for UserCubit
-      final currentUser = User(
-        id: apiUser.id,
-        name: apiUser.name,
-        email: apiUser.email,
-        phone: apiUser.phone,
-        role: userRole,
-        department: null,
-        isActive: apiUser.isActive,
-        createdAt: apiUser.createdAt ?? DateTime.now(),
-        lastLoginAt: apiUser.lastLogin,
-      );
-
-      // Update UserCubit with current user
-      context.read<UserCubit>().setCurrentUser(currentUser);
-
-      // Note: Settings and other data will be loaded in _loadInitialData()
-      debugPrint('✅ Auto-login: UserCubit updated with current user');
-    } catch (e) {
-      debugPrint('❌ Error setting user in Cubit: $e');
-    }
-  }
-
-  /// Load initial data after authentication
-  /// Only called once after successful auto-login to prevent duplicate API calls
-  void _loadInitialData(BuildContext context) {
-    try {
-      debugPrint('📦 Loading initial data after authentication...');
-
-      // Load settings first (needed for app mode) - Force reload to refresh appMode/companyId
-      context.read<SettingsCubit>().loadSettings(forceReload: true);
-
-      // Load accounts (needed for default account)
-      context.read<AccountCubit>().initializeAccounts();
-
-      // Load other data (expenses, budgets, recurring expenses, categories)
-      // Force refresh expenses to ensure they reload after user context change
-      context.read<ExpenseCubit>().loadExpenses(forceRefresh: true);
-
-      final now = DateTime.now();
-      context.read<BudgetCubit>().loadBudgetsForMonth(now.year, now.month);
-
-      context.read<RecurringExpenseCubit>().loadRecurringExpenses();
-
-      context.read<UserCubit>().loadUsers();
-
-      debugPrint('✅ Initial data load initiated');
-    } catch (e) {
-      debugPrint('❌ Error loading initial data: $e');
-    }
+    final defaults = const SettingsState();
+    _theme = defaults.themeData;
+    _locale = Locale(defaults.language);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Loading state
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    // Not authenticated
-    if (!_isAuthenticated) {
-      if (!OnboardingService.isOnboardingCompleted) {
-        return const OnboardingScreen();
-      }
-      return const SimpleLoginScreen();
-    }
-
-    // Authenticated - navigate to main screen
-    debugPrint('✅ المستخدم مسجل دخول: $_userId');
-    return MainScreen(key: ValueKey(_userId ?? 'main'));
+    return BlocListener<SettingsCubit, SettingsState>(
+      listener: (context, state) {
+        if (state.themeData != _theme || state.language != _locale.languageCode) {
+          setState(() {
+            _theme = state.themeData;
+            _locale = Locale(state.language);
+          });
+        }
+      },
+      child: MaterialApp.router(
+        title: 'Spendly',
+        theme: _theme,
+        routerConfig: appRouter,
+        debugShowCheckedModeBanner: false,
+        locale: _locale,
+        supportedLocales: const [Locale('en', ''), Locale('ar', '')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    );
   }
 }

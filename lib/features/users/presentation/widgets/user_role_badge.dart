@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
+import 'package:expense_tracker/features/users/presentation/utils/user_role_display.dart';
 
 class UserRoleBadge extends StatelessWidget {
   const UserRoleBadge({
@@ -48,7 +49,7 @@ class UserRoleBadge extends StatelessWidget {
           const Icon(Icons.star, size: 14, color: Colors.white),
           const SizedBox(width: 4),
           Text(
-            isRTL ? 'مدير عام' : 'Owner',
+            role.getDisplayName(isRTL),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,

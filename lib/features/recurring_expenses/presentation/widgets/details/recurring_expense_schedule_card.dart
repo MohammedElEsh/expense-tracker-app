@@ -1,11 +1,13 @@
-// Recurring Expense Details - Schedule Card Widget
+// Recurring Expense Details - Schedule Card (domain entity only)
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:expense_tracker/features/recurring_expenses/data/models/recurring_expense.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurring_expense_entity.dart';
+import 'package:expense_tracker/features/recurring_expenses/domain/entities/recurrence_type.dart';
+import 'package:expense_tracker/features/recurring_expenses/presentation/utils/recurring_expense_display_helper.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class RecurringExpenseScheduleCard extends StatelessWidget {
-  final RecurringExpense recurringExpense;
+  final RecurringExpenseEntity recurringExpense;
   final SettingsState settings;
   final bool isRTL;
   final bool isDesktop;
@@ -66,19 +68,17 @@ class RecurringExpenseScheduleCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          if (recurringExpense.nextDue != null) ...[
-            _buildInfoRow(
-              Icons.schedule,
-              isRTL ? 'الاستحقاق التالي' : 'Next Due',
-              DateFormat('MMM dd, yyyy').format(recurringExpense.nextDue!),
-            ),
-            const SizedBox(height: 12),
-          ],
+          _buildInfoRow(
+            Icons.schedule,
+            isRTL ? 'الاستحقاق التالي' : 'Next Due',
+            DateFormat('MMM dd, yyyy').format(recurringExpense.nextDueDate),
+          ),
+          const SizedBox(height: 12),
           if (recurringExpense.recurrenceType == RecurrenceType.monthly) ...[
             _buildInfoRow(
               Icons.calendar_month,
               isRTL ? 'يوم الشهر' : 'Day of Month',
-              '${recurringExpense.dayOfMonth}',
+              '${recurringExpense.dayOfMonth ?? 1}',
             ),
           ],
         ],

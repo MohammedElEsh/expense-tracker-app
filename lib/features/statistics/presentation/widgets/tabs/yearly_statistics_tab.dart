@@ -1,6 +1,6 @@
-// ✅ Yearly Statistics Tab - Refactored & Clean
+// Yearly Statistics Tab: data from StatisticsCubit state only.
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/statistics/domain/entities/statistics_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/yearly/yearly_total_card.dart';
 import 'package:expense_tracker/features/statistics/presentation/widgets/yearly/yearly_spending_trend_chart.dart';
@@ -8,14 +8,14 @@ import 'package:expense_tracker/features/statistics/presentation/widgets/yearly/
 import 'package:expense_tracker/features/statistics/presentation/widgets/yearly/yearly_monthly_breakdown_list.dart';
 
 class YearlyStatisticsTab extends StatelessWidget {
-  final ExpenseState expenseState;
+  final StatisticsEntity? statistics;
   final SettingsState settings;
   final bool isRTL;
   final DateTime selectedYear;
 
   const YearlyStatisticsTab({
     super.key,
-    required this.expenseState,
+    required this.statistics,
     required this.settings,
     required this.isRTL,
     required this.selectedYear,
@@ -23,26 +23,12 @@ class YearlyStatisticsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate yearly total
-    final yearExpenses =
-        expenseState.allExpenses.where((expense) {
-          return expense.date.year == selectedYear.year;
-        }).toList();
-
-    final yearlyTotal = yearExpenses.fold<double>(
-      0.0,
-      (sum, expense) => sum + expense.amount,
+    final yearlyTotal = statistics?.totalAmount ?? 0.0;
+    final monthlyTotals = Map<int, double>.from(
+      statistics?.monthlyBreakdownForYear ?? {},
     );
-
-    // Calculate monthly breakdown
-    final Map<int, double> monthlyTotals = {};
-    for (int month = 1; month <= 12; month++) {
-      monthlyTotals[month] = 0.0;
-    }
-
-    for (final expense in yearExpenses) {
-      monthlyTotals[expense.date.month] =
-          (monthlyTotals[expense.date.month] ?? 0) + expense.amount;
+    for (int m = 1; m <= 12; m++) {
+      monthlyTotals.putIfAbsent(m, () => 0.0);
     }
 
     return SingleChildScrollView(

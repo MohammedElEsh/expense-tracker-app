@@ -1,35 +1,33 @@
-// Signup Feature - Cubit
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
-import 'package:expense_tracker/features/auth/presentation/cubit/signup_state.dart';
-import 'package:expense_tracker/features/auth/domain/usecases/register_personal_usecase.dart';
-import 'package:expense_tracker/features/auth/domain/usecases/register_business_usecase.dart';
-import 'package:expense_tracker/features/auth/domain/usecases/logout_usecase.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:expense_tracker/core/error/exceptions.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/apply_user_context_usecase.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/clear_app_context_usecase.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/register_business_usecase.dart';
+import 'package:expense_tracker/features/auth/domain/usecases/register_personal_usecase.dart';
+import 'package:expense_tracker/features/auth/presentation/cubit/signup_state.dart';
 
-/// Signup Cubit for handling personal and business registration
 class SignupCubit extends Cubit<SignupState> {
   final RegisterPersonalUseCase _registerPersonalUseCase;
   final RegisterBusinessUseCase _registerBusinessUseCase;
   final LogoutUseCase _logoutUseCase;
+  final ApplyUserContextUseCase _applyUserContextUseCase;
+  final ClearAppContextUseCase _clearAppContextUseCase;
 
-  /// Create SignupCubit with optional dependencies
-  /// If not provided, uses ServiceLocator
   SignupCubit({
-    RegisterPersonalUseCase? registerPersonalUseCase,
-    RegisterBusinessUseCase? registerBusinessUseCase,
-    LogoutUseCase? logoutUseCase,
-  }) : _registerPersonalUseCase =
-           registerPersonalUseCase ?? serviceLocator.registerPersonalUseCase,
-       _registerBusinessUseCase =
-           registerBusinessUseCase ?? serviceLocator.registerBusinessUseCase,
-       _logoutUseCase = logoutUseCase ?? serviceLocator.logoutUseCase,
-       super(const SignupState());
+    required RegisterPersonalUseCase registerPersonalUseCase,
+    required RegisterBusinessUseCase registerBusinessUseCase,
+    required LogoutUseCase logoutUseCase,
+    required ApplyUserContextUseCase applyUserContextUseCase,
+    required ClearAppContextUseCase clearAppContextUseCase,
+  })  : _registerPersonalUseCase = registerPersonalUseCase,
+        _registerBusinessUseCase = registerBusinessUseCase,
+        _logoutUseCase = logoutUseCase,
+        _applyUserContextUseCase = applyUserContextUseCase,
+        _clearAppContextUseCase = clearAppContextUseCase,
+        super(const SignupState());
 
-  /// Handle personal signup request
   Future<void> signupPersonal({
     required String name,
     required String email,
@@ -39,12 +37,8 @@ class SignupCubit extends Cubit<SignupState> {
       debugPrint('📝 SignupCubit: Starting personal registration...');
       emit(state.copyWith(status: SignupStatus.loading, clearError: true));
 
-      // 1. Clear old mode settings
-      debugPrint('🧹 SignupCubit: Clearing old mode settings...');
-      await SettingsService.clearModeAndCompany();
+      await _clearAppContextUseCase();
 
-      // 2. Register via REST API
-      debugPrint('🔐 SignupCubit: Registering user via API...');
       final user = await _registerPersonalUseCase(
         RegisterPersonalParams(
           name: name.trim(),
@@ -55,14 +49,7 @@ class SignupCubit extends Cubit<SignupState> {
 
       debugPrint('✅ SignupCubit: Registration successful: ${user.email}');
 
-      // 3. Save personal mode setting
-      debugPrint('💾 SignupCubit: Saving app mode...');
-      await SettingsService.setAppMode(AppMode.personal);
-      await SettingsService.setCompanyId(null);
-      debugPrint('✅ SignupCubit: Saved mode: personal');
-
-      // 4. Logout to force fresh login (user should verify email first or login again)
-      debugPrint('🚪 SignupCubit: Logging out for fresh login...');
+      await _applyUserContextUseCase(user);
       await _logoutUseCase();
 
       emit(
@@ -103,12 +90,8 @@ class SignupCubit extends Cubit<SignupState> {
       debugPrint('📝 SignupCubit: Starting business registration...');
       emit(state.copyWith(status: SignupStatus.loading, clearError: true));
 
-      // 1. Clear old mode settings
-      debugPrint('🧹 SignupCubit: Clearing old mode settings...');
-      await SettingsService.clearModeAndCompany();
+      await _clearAppContextUseCase();
 
-      // 2. Register via REST API (company is created on backend)
-      debugPrint('🔐 SignupCubit: Registering business user via API...');
       final user = await _registerBusinessUseCase(
         RegisterBusinessParams(
           name: adminName.trim(),
@@ -123,18 +106,7 @@ class SignupCubit extends Cubit<SignupState> {
       );
       debugPrint('🏢 SignupCubit: Company ID: ${user.companyId}');
 
-      // 3. Save business mode setting
-      debugPrint('💾 SignupCubit: Saving app mode...');
-      await SettingsService.setAppMode(AppMode.business);
-      if (user.companyId != null) {
-        await SettingsService.setCompanyId(user.companyId);
-      }
-      debugPrint(
-        '✅ SignupCubit: Saved mode: business with companyId: ${user.companyId}',
-      );
-
-      // 4. Logout to force fresh login (user should verify email first or login again)
-      debugPrint('🚪 SignupCubit: Logging out for fresh login...');
+      await _applyUserContextUseCase(user);
       await _logoutUseCase();
 
       emit(

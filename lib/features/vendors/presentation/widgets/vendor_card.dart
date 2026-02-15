@@ -1,12 +1,12 @@
-// ✅ Clean Architecture - Vendor Card Widget
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:expense_tracker/features/vendors/data/models/vendor.dart';
+import 'package:expense_tracker/features/vendors/domain/entities/vendor_entity.dart';
+import 'package:expense_tracker/features/vendors/presentation/utils/vendor_display_helper.dart';
 import 'package:expense_tracker/core/theme/app_theme.dart';
 import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class VendorCard extends StatelessWidget {
-  final Vendor vendor;
+  final VendorEntity vendor;
   final bool isRTL;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -65,7 +65,7 @@ class VendorCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                     child: Text(
-                      vendor.status.getDisplayName(isRTL),
+                      vendor.status.displayName(isRTL),
                       style: AppTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: vendor.status.color,
@@ -115,7 +115,6 @@ class VendorCard extends StatelessWidget {
 
               const SizedBox(height: AppSpacing.sm),
 
-              // Vendor Name
               Text(
                 vendor.displayName,
                 style: AppTypography.headlineSmall.copyWith(
@@ -126,9 +125,8 @@ class VendorCard extends StatelessWidget {
 
               const SizedBox(height: AppSpacing.xxs),
 
-              // Type
               Text(
-                vendor.type.getDisplayName(isRTL),
+                vendor.type.displayName(isRTL),
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w500,
                   color: vendor.type.color,

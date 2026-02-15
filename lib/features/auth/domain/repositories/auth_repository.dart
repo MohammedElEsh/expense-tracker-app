@@ -56,4 +56,10 @@ abstract class AuthRepository {
   /// Stream of authentication state changes
   /// Emits [UserEntity] when authenticated, null when not
   Stream<UserEntity?> authStateChanges();
+
+  /// Apply app mode and company from authenticated user (e.g. after login/signup).
+  Future<void> applyUserContext(UserEntity user);
+
+  /// Clear app mode and company (e.g. before signup or on logout).
+  Future<void> clearAppContext();
 }

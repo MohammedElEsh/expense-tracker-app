@@ -1,264 +1,187 @@
-// ✅ Clean Architecture - Presentation Cubit
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
-import 'package:expense_tracker/features/users/data/datasources/user_service.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
-import 'package:expense_tracker/core/state/user_context_manager.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_role.dart';
+import 'package:expense_tracker/features/users/domain/usecases/create_user_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/delete_user_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/get_users_usecase.dart';
+import 'package:expense_tracker/features/users/domain/usecases/update_user_usecase.dart';
 import 'package:expense_tracker/features/users/presentation/cubit/user_state.dart';
 
 class UserCubit extends Cubit<UserState> {
-  static const String usersBoxName = 'users';
-  static const String _currentUserKey = 'current_user';
+  final GetUsersUseCase getUsersUseCase;
+  final CreateUserUseCase createUserUseCase;
+  final UpdateUserUseCase updateUserUseCase;
+  final DeleteUserUseCase deleteUserUseCase;
 
-  UserCubit() : super(const UserState());
+  UserCubit({
+    required this.getUsersUseCase,
+    required this.createUserUseCase,
+    required this.updateUserUseCase,
+    required this.deleteUserUseCase,
+  }) : super(const UserInitial());
 
   Future<void> loadUsers() async {
-    emit(state.copyWith(isLoading: true, clearError: true));
-
+    emit(const UserLoading());
     try {
-      // تحميل المستخدمين من Hive
-      final users = <User>[];
+      final users = await getUsersUseCase();
+      emit(UserLoaded(users: users, error: null));
+    } catch (e) {
+      debugPrint('❌ UserCubit loadUsers: $e');
+      emit(UserError(e.toString()));
+    }
+  }
 
-      // تحميل المستخدم الحالي من Hive
-      final currentUserBox = await Hive.openBox(_currentUserKey);
-      final currentUserId = currentUserBox.get('id');
-      User? currentUser;
-      if (currentUserId != null) {
-        try {
-          currentUser = users.firstWhere((user) => user.id == currentUserId);
-        } catch (e) {
-          currentUser = null;
-        }
+  Future<void> addUser({
+    required String name,
+    required String email,
+    required String password,
+    required UserRole role,
+  }) async {
+    final entity = UserEntity(
+      id: '',
+      name: name,
+      email: email,
+      role: role,
+    );
+    try {
+      await createUserUseCase(entity, password: password);
+      await loadUsers();
+    } catch (e) {
+      if (state is UserLoaded) {
+        emit((state as UserLoaded).copyWith(error: e.toString()));
       } else {
-        currentUser = null;
+        emit(UserError(e.toString()));
       }
-
-      emit(
-        state.copyWith(
-          users: users,
-          currentUser: currentUser,
-          isLoading: false,
-        ),
-      );
-    } catch (error) {
-      emit(
-        state.copyWith(isLoading: false, error: 'Failed to load users: $error'),
-      );
+      rethrow;
     }
   }
 
-  Future<void> addUser(User user) async {
-    try {
-      await UserService.updateUser(user);
-
-      final updatedUsers = List<User>.from(state.users)..add(user);
-
-      emit(state.copyWith(users: updatedUsers));
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to add user: $error'));
+  Future<void> updateUserFromApi({
+    required String userId,
+    String? name,
+    UserRole? role,
+  }) async {
+    final current = state is UserLoaded ? (state as UserLoaded).users : <UserEntity>[];
+    UserEntity? existing;
+    for (final u in current) {
+      if (u.id == userId) {
+        existing = u;
+        break;
+      }
     }
+    if (existing == null) {
+      final loaded = await getUsersUseCase();
+      UserEntity? found;
+      for (final u in loaded) {
+        if (u.id == userId) {
+          found = u;
+          break;
+        }
+      }
+      if (found == null) throw StateError('User not found');
+      await _emitUpdateUser(found, name: name, role: role);
+      return;
+    }
+    await _emitUpdateUser(existing, name: name, role: role);
   }
 
-  Future<void> updateUser(User user) async {
+  Future<void> _emitUpdateUser(UserEntity existing, {String? name, UserRole? role}) async {
+    final entity = existing.copyWith(
+      name: name ?? existing.name,
+      role: role ?? existing.role,
+    );
     try {
-      // تحديث المستخدم في قاعدة البيانات
-      await UserService.updateUser(user);
-
-      // تحديث قائمة المستخدمين في الـ state
-      final updatedUsers =
-          state.users.map((u) {
-            return u.id == user.id ? user : u;
-          }).toList();
-
-      // تحديث المستخدم الحالي إذا كان هو المحدث
-      final updatedCurrentUser =
-          state.currentUser?.id == user.id ? user : state.currentUser;
-
-      emit(
-        state.copyWith(users: updatedUsers, currentUser: updatedCurrentUser),
-      );
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to update user: $error'));
+      await updateUserUseCase(entity);
+      await loadUsers();
+    } catch (e) {
+      if (state is UserLoaded) {
+        emit((state as UserLoaded).copyWith(error: e.toString()));
+      } else {
+        emit(UserError(e.toString()));
+      }
+      rethrow;
     }
   }
 
   Future<void> deleteUser(String userId) async {
     try {
-      await UserService.deleteUser(userId);
-
-      final updatedUsers =
-          state.users.where((user) => user.id != userId).toList();
-
-      // إذا كان المستخدم المحذوف هو المستخدم الحالي، قم بتسجيل الخروج
-      final updatedCurrentUser =
-          state.currentUser?.id == userId ? null : state.currentUser;
-
-      emit(
-        state.copyWith(users: updatedUsers, currentUser: updatedCurrentUser),
-      );
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to delete user: $error'));
+      await deleteUserUseCase(userId);
+      if (state is UserLoaded) {
+        final s = state as UserLoaded;
+        final updated = s.users.where((u) => u.id != userId).toList();
+        final updatedCurrent = s.currentUser?.id == userId ? null : s.currentUser;
+        emit(s.copyWith(users: updated, currentUser: updatedCurrent));
+      }
+    } catch (e) {
+      if (state is UserLoaded) {
+        emit((state as UserLoaded).copyWith(error: e.toString()));
+      } else {
+        emit(UserError(e.toString()));
+      }
+      rethrow;
     }
   }
 
-  Future<void> toggleUserStatus(String userId) async {
-    try {
-      final updatedUser = await UserService.toggleUserStatus(userId);
-      updateUser(updatedUser);
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to toggle user status: $error'));
-    }
-  }
-
-  Future<void> updateLastLogin(String userId) async {
-    try {
-      final user = state.getUserById(userId);
-      if (user == null) return;
-
-      final updatedUser = user.copyWith(lastLoginAt: DateTime.now());
-      await UserService.updateUser(updatedUser);
-      updateUser(updatedUser);
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to update last login: $error'));
-    }
-  }
-
-  Future<void> changeUserRole(String userId, UserRole newRole) async {
-    try {
-      final user = state.getUserById(userId);
-      if (user == null) return;
-
-      // تحديث الدور عبر REST API
-      await serviceLocator.authRemoteDataSource.updateUserRole(
-        userId,
-        newRole.name,
-      );
-
-      final updatedUser = user.copyWith(role: newRole);
-      await UserService.updateUser(updatedUser);
-      updateUser(updatedUser);
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to change user role: $error'));
+  void setCurrentUser(UserEntity? user) {
+    if (state is UserLoaded) {
+      emit((state as UserLoaded).copyWith(currentUser: user));
+    } else {
+      emit(UserLoaded(users: [], currentUser: user));
     }
   }
 
   void searchUsers(String query) {
-    emit(state.copyWith(searchQuery: query));
+    if (state is UserLoaded) {
+      emit((state as UserLoaded).copyWith(searchQuery: query));
+    }
   }
 
   void filterUsersByRole(UserRole? role) {
-    List<User> filteredUsers = state.users;
-
-    if (role != null) {
-      filteredUsers = filteredUsers.where((user) => user.role == role).toList();
-    }
-
-    emit(state.copyWith(selectedRole: role, filteredUsers: filteredUsers));
+    if (state is! UserLoaded) return;
+    final s = state as UserLoaded;
+    final filtered = role == null ? s.users : s.users.where((u) => u.role == role).toList();
+    emit(s.copyWith(selectedRole: role, filteredUsers: filtered));
   }
 
   void filterUsersByDepartment(String? department) {
-    List<User> filteredUsers = state.users;
-
-    if (department != null) {
-      filteredUsers =
-          filteredUsers.where((user) => user.department == department).toList();
-    }
-
-    emit(
-      state.copyWith(
-        selectedDepartment: department,
-        filteredUsers: filteredUsers,
-      ),
-    );
+    if (state is! UserLoaded) return;
+    final s = state as UserLoaded;
+    final filtered = department == null
+        ? s.users
+        : s.users.where((u) => u.department == department).toList();
+    emit(s.copyWith(selectedDepartment: department, filteredUsers: filtered));
   }
 
   void clearUserFilters() {
-    emit(
-      state.copyWith(
+    if (state is UserLoaded) {
+      emit((state as UserLoaded).copyWith(
         searchQuery: '',
         selectedRole: null,
         selectedDepartment: null,
         filteredUsers: [],
-      ),
-    );
-  }
-
-  Future<void> setCurrentUser(User? user) async {
-    try {
-      // Check if user or role changed
-      final previousUser = state.currentUser;
-      final newUser = user;
-
-      if (newUser != null) {
-        final currentUserBox = await Hive.openBox(_currentUserKey);
-        await currentUserBox.put('id', newUser.id);
-
-        // Check if user or role changed (for context clearing)
-        final userIdChanged = previousUser?.id != newUser.id;
-        final roleChanged = previousUser?.role != newUser.role;
-
-        if (userIdChanged || roleChanged) {
-          debugPrint(
-            '🔄 User context changed - User: $userIdChanged, Role: $roleChanged',
-          );
-          debugPrint(
-            '   Previous: ${previousUser?.id ?? 'null'} (${previousUser?.role.name ?? 'null'})',
-          );
-          debugPrint('   New: ${newUser.id} (${newUser.role.name})');
-        }
-
-        // تحديث آخر تسجيل دخول
-        updateLastLogin(newUser.id);
-      } else {
-        final currentUserBox = await Hive.openBox(_currentUserKey);
-        await currentUserBox.delete('id');
-      }
-
-      emit(state.copyWith(currentUser: user));
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to set current user: $error'));
+      ));
     }
   }
 
-  Future<void> logoutUser() async {
-    try {
-      // Clear user context before logout
-      userContextManager.clearContext();
+  bool get hasUsers => state is UserLoaded && (state as UserLoaded).users.isNotEmpty;
+  bool get hasOwner =>
+      state is UserLoaded &&
+      (state as UserLoaded).users.any((u) => u.role == UserRole.owner && u.isActive);
 
-      final currentUserBox = await Hive.openBox(_currentUserKey);
-      await currentUserBox.delete('id');
-
-      emit(state.copyWith(currentUser: null));
-    } catch (error) {
-      emit(state.copyWith(error: 'Failed to logout user: $error'));
-    }
+  /// Whether current user can manage users (owner only). No static service; logic in Cubit.
+  bool get canManageUsers {
+    if (state is! UserLoaded) return false;
+    final user = (state as UserLoaded).currentUser;
+    if (user == null || !user.isActive) return false;
+    return user.role == UserRole.owner;
   }
 
-  /// إنشاء مستخدم افتراضي (مدير عام)
-  Future<void> createDefaultOwner() async {
-    final defaultOwner = User(
-      id: 'default_owner',
-      name: 'مدير النظام',
-      email: 'admin@company.com',
-      role: UserRole.owner,
-      department: 'الإدارة',
-      isActive: true,
-      createdAt: DateTime.now(),
-    );
-
-    addUser(defaultOwner);
-    setCurrentUser(defaultOwner);
-  }
-
-  /// التحقق من وجود مستخدمين في النظام
-  bool get hasUsers => state.users.isNotEmpty;
-
-  /// التحقق من وجود مدير في النظام
-  bool get hasOwner {
-    return state.users.any(
-      (user) => user.role == UserRole.owner && user.isActive,
-    );
+  /// Whether current user can view user list (owner or accountant). No static service.
+  bool get canViewUsers {
+    if (state is! UserLoaded) return false;
+    final user = (state as UserLoaded).currentUser;
+    if (user == null || !user.isActive) return false;
+    return user.role == UserRole.owner || user.role == UserRole.accountant;
   }
 }

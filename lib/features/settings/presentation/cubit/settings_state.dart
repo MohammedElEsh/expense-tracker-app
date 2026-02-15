@@ -1,12 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/settings/data/datasources/settings_service.dart';
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 import 'package:expense_tracker/core/theme/app_colors.dart';
 import 'package:expense_tracker/core/theme/app_spacing.dart';
 
 class SettingsState extends Equatable {
   final String currency;
+  final String currencySymbol;
+  final List<String> availableCurrencies;
+  final Map<String, String> codeToSymbol;
   final bool isDarkMode;
   final String language;
   final AppMode appMode;
@@ -19,6 +21,11 @@ class SettingsState extends Equatable {
 
   const SettingsState({
     this.currency = 'SAR',
+    this.currencySymbol = 'ر.س',
+    this.availableCurrencies = const ['SAR', 'EGP', 'USD', 'GBP', 'EUR', 'JPY', 'AED'],
+    this.codeToSymbol = const {
+      'SAR': 'ر.س', 'EGP': 'ج.م', 'USD': '\$', 'GBP': '£', 'EUR': '€', 'JPY': '¥', 'AED': 'د.إ',
+    },
     this.isDarkMode = false,
     this.language = 'en',
     this.appMode = AppMode.personal,
@@ -33,6 +40,9 @@ class SettingsState extends Equatable {
   @override
   List<Object?> get props => [
     currency,
+    currencySymbol,
+    availableCurrencies,
+    codeToSymbol,
     isDarkMode,
     language,
     appMode,
@@ -44,8 +54,13 @@ class SettingsState extends Equatable {
     notifications,
   ];
 
+  String symbolFor(String code) => codeToSymbol[code] ?? code;
+
   SettingsState copyWith({
     String? currency,
+    String? currencySymbol,
+    List<String>? availableCurrencies,
+    Map<String, String>? codeToSymbol,
     bool? isDarkMode,
     String? language,
     AppMode? appMode,
@@ -59,6 +74,9 @@ class SettingsState extends Equatable {
   }) {
     return SettingsState(
       currency: currency ?? this.currency,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
+      availableCurrencies: availableCurrencies ?? this.availableCurrencies,
+      codeToSymbol: codeToSymbol ?? this.codeToSymbol,
       isDarkMode: isDarkMode ?? this.isDarkMode,
       language: language ?? this.language,
       appMode: appMode ?? this.appMode,
@@ -70,11 +88,6 @@ class SettingsState extends Equatable {
       notifications: notifications ?? this.notifications,
     );
   }
-
-  // Helper getters
-  String get currencySymbol => SettingsService.getCurrencySymbol(currency);
-
-  List<String> get availableCurrencies => SettingsService.availableCurrencies;
 
   // App Mode helpers
   bool get isPersonalMode => appMode == AppMode.personal;

@@ -1,4 +1,4 @@
-import 'package:expense_tracker/features/app_mode/data/models/app_mode.dart';
+import 'package:expense_tracker/core/domain/app_mode.dart';
 
 /// Recurring Expense Model
 /// Supports API format with accountId, dayOfWeek, and all recurrence types

@@ -1,56 +1,28 @@
-// ✅ Business Reports Tab - Extracted from Enhanced Statistics Screen
+// Business Reports Tab: data from StatisticsCubit state only.
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:expense_tracker/features/expenses/presentation/cubit/expense_state.dart';
+import 'package:expense_tracker/features/statistics/domain/entities/statistics_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
 class BusinessReportsTab extends StatelessWidget {
-  final ExpenseState expenseState;
+  final StatisticsEntity? statistics;
   final SettingsState settings;
   final bool isRTL;
 
   const BusinessReportsTab({
     super.key,
-    required this.expenseState,
+    required this.statistics,
     required this.settings,
     required this.isRTL,
   });
 
   @override
   Widget build(BuildContext context) {
-    final expenses = expenseState.allExpenses;
-
-    // Calculate this month's data
     final now = DateTime.now();
-    final thisMonthExpenses =
-        expenses.where((expense) {
-          return expense.date.year == now.year &&
-              expense.date.month == now.month;
-        }).toList();
-
-    final thisMonthTotal = thisMonthExpenses.fold<double>(
-      0.0,
-      (sum, expense) => sum + expense.amount,
-    );
-
-    // Calculate last month's data for comparison
-    final lastMonth = DateTime(now.year, now.month - 1);
-    final lastMonthExpenses =
-        expenses.where((expense) {
-          return expense.date.year == lastMonth.year &&
-              expense.date.month == lastMonth.month;
-        }).toList();
-
-    final lastMonthTotal = lastMonthExpenses.fold<double>(
-      0.0,
-      (sum, expense) => sum + expense.amount,
-    );
-
-    // Calculate change percentage
-    final changePercentage =
-        lastMonthTotal > 0
-            ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal * 100)
-            : 0.0;
+    final thisMonthTotal = statistics?.totalAmount ?? 0.0;
+    final changePercentage = statistics?.changePercentage ?? 0.0;
+    final categoryTotals = statistics?.categoryTotals ?? {};
+    final hasData = (statistics?.expenseCount ?? 0) > 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -121,7 +93,7 @@ class BusinessReportsTab extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Monthly Comparison Bar Chart
-          if (expenses.isNotEmpty) ...[
+          if (hasData && categoryTotals.isNotEmpty) ...[
             Text(
               isRTL ? 'المقارنة الشهرية' : 'Monthly Comparison',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -152,7 +124,7 @@ class BusinessReportsTab extends StatelessWidget {
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: _getMaxY(expenses, now),
+                  maxY: _getMaxY(statistics?.last6MonthsTotals ?? []),
                   barTouchData: BarTouchData(
                     enabled: true,
                     touchTooltipData: BarTouchTooltipData(
@@ -210,7 +182,7 @@ class BusinessReportsTab extends StatelessWidget {
                   ),
                   borderData: FlBorderData(show: false),
                   gridData: FlGridData(show: true, drawVerticalLine: false),
-                  barGroups: _buildBarGroups(expenses, now),
+                  barGroups: _buildBarGroups(statistics?.last6MonthsTotals ?? []),
                 ),
               ),
             ),
@@ -234,14 +206,14 @@ class BusinessReportsTab extends StatelessWidget {
             children: [
               _SummaryCard(
                 title: isRTL ? 'هذا الشهر' : 'This Month',
-                value: '${thisMonthExpenses.length}',
+                value: '${statistics?.expenseCount ?? 0}',
                 subtitle: isRTL ? 'مصروف' : 'expenses',
                 color: Colors.blue,
               ),
               _SummaryCard(
                 title: isRTL ? 'الشهر الماضي' : 'Last Month',
-                value: '${lastMonthExpenses.length}',
-                subtitle: isRTL ? 'مصروف' : 'expenses',
+                value: '${settings.currencySymbol} ${(statistics?.previousPeriodTotal ?? 0).toStringAsFixed(0)}',
+                subtitle: isRTL ? 'إجمالي' : 'total',
                 color: Colors.grey,
               ),
             ],
@@ -296,28 +268,13 @@ class BusinessReportsTab extends StatelessWidget {
     );
   }
 
-  // Build bar groups for last 6 months
-  List<BarChartGroupData> _buildBarGroups(
-    List<dynamic> expenses,
-    DateTime now,
-  ) {
-    final Map<int, double> monthlyTotals = {};
-
-    // Calculate totals for last 6 months
-    for (int i = 0; i < 6; i++) {
-      final targetMonth = DateTime(now.year, now.month - (5 - i));
-      final monthExpenses = expenses.where((expense) {
-        return expense.date.year == targetMonth.year &&
-            expense.date.month == targetMonth.month;
-      });
-      monthlyTotals[i] = monthExpenses.fold<double>(
-        0.0,
-        (sum, expense) => sum + expense.amount,
-      );
-    }
+  List<BarChartGroupData> _buildBarGroups(List<double> monthlyTotals) {
+    final list = monthlyTotals.length >= 6
+        ? monthlyTotals
+        : List<double>.from(monthlyTotals)..addAll(List.filled(6 - monthlyTotals.length, 0.0));
 
     return List.generate(6, (index) {
-      final value = monthlyTotals[index] ?? 0.0;
+      final value = list.length > index ? list[index] : 0.0;
       final isCurrentMonth = index == 5;
 
       return BarChartGroupData(
@@ -348,25 +305,10 @@ class BusinessReportsTab extends StatelessWidget {
     });
   }
 
-  // Get maximum Y value
-  double _getMaxY(List<dynamic> expenses, DateTime now) {
-    double maxValue = 0.0;
-
-    for (int i = 0; i < 6; i++) {
-      final targetMonth = DateTime(now.year, now.month - (5 - i));
-      final monthExpenses = expenses.where((expense) {
-        return expense.date.year == targetMonth.year &&
-            expense.date.month == targetMonth.month;
-      });
-      final total = monthExpenses.fold<double>(
-        0.0,
-        (sum, expense) => sum + expense.amount,
-      );
-      if (total > maxValue) maxValue = total;
-    }
-
-    // Prevent zero interval
-    return maxValue > 0 ? maxValue * 1.2 : 100000;
+  double _getMaxY(List<double> monthlyTotals) {
+    if (monthlyTotals.isEmpty) return 100.0;
+    final maxValue = monthlyTotals.reduce((a, b) => a > b ? a : b);
+    return maxValue > 0 ? maxValue * 1.2 : 100.0;
   }
 
   // Build month title

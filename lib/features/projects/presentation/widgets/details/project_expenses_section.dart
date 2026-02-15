@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:expense_tracker/features/expenses/data/models/expense.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/expenses/presentation/pages/expense_details_screen.dart';
-import 'package:expense_tracker/core/widgets/animated_page_route.dart';
 import 'package:expense_tracker/core/utils/theme_helper.dart';
 
 class ProjectExpensesSection extends StatelessWidget {
@@ -96,10 +96,7 @@ class ProjectExpensesSection extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Navigator.push(
-            context,
-            AnimatedPageRoute(child: ExpenseDetailsScreen(expense: expense)),
-          );
+          context.push(AppRoutes.expenseDetails, extra: expense);
         },
         child: Row(
           children: [

@@ -1,18 +1,14 @@
 // Settings - Management Features Card Widget
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/features/users/data/models/user.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
+import 'package:expense_tracker/features/users/domain/entities/user_entity.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
-import 'package:expense_tracker/features/recurring_expenses/presentation/pages/recurring_expenses_screen.dart';
-import 'package:expense_tracker/features/accounts/presentation/pages/accounts_screen.dart';
-import 'package:expense_tracker/features/projects/presentation/pages/projects_screen.dart';
-import 'package:expense_tracker/features/vendors/presentation/pages/vendors_screen.dart';
-import 'package:expense_tracker/features/users/presentation/pages/user_management_screen.dart';
-import 'package:expense_tracker/features/companies/presentation/pages/companies_screen.dart';
-import 'package:expense_tracker/core/services/permission_service.dart';
+import 'package:expense_tracker/features/users/domain/utils/permission_service.dart';
 
 class ManagementFeaturesCard extends StatelessWidget {
   final SettingsState settings;
-  final User? currentUser;
+  final UserEntity? currentUser;
   final bool isRTL;
 
   const ManagementFeaturesCard({
@@ -37,12 +33,7 @@ class ManagementFeaturesCard extends StatelessWidget {
           icon: Icons.repeat,
           color: Colors.green,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const RecurringExpensesScreen(),
-              ),
-            );
+            context.push(AppRoutes.recurringExpenses);
           },
         ),
 
@@ -59,16 +50,13 @@ class ManagementFeaturesCard extends StatelessWidget {
           icon: Icons.account_balance,
           color: Colors.blue,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AccountsScreen()),
-            );
+            context.push(AppRoutes.accounts);
           },
         ),
 
         // Business Mode Only Features
         if (settings.isBusinessMode &&
-            PermissionService.canManageExpenses(currentUser)) ...[
+            PermissionService.canManageExpensesEntity(currentUser)) ...[
           const SizedBox(height: 16),
 
           // Company Management
@@ -82,12 +70,7 @@ class ManagementFeaturesCard extends StatelessWidget {
             icon: Icons.business,
             color: Colors.purple,
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CompaniesScreen(),
-                ),
-              );
+              context.push(AppRoutes.companies);
             },
           ),
 
@@ -104,10 +87,7 @@ class ManagementFeaturesCard extends StatelessWidget {
             icon: Icons.work,
             color: Colors.orange,
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProjectsScreen()),
-              );
+              context.push(AppRoutes.projects);
             },
           ),
 
@@ -124,22 +104,19 @@ class ManagementFeaturesCard extends StatelessWidget {
             icon: Icons.store,
             color: Colors.teal,
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const VendorsScreen()),
-              );
+              context.push(AppRoutes.vendors);
             },
           ),
 
           const SizedBox(height: 16),
 
           // User Management (Owner can manage, Accountant can view)
-          if (PermissionService.canViewUsers(currentUser)) ...[
+          if (PermissionService.canViewUsersEntity(currentUser)) ...[
             _buildManagementButton(
               context,
               title: isRTL ? 'إدارة المستخدمين' : 'User Management',
               description:
-                  PermissionService.canManageUsers(currentUser)
+                  PermissionService.canManageUsersEntity(currentUser)
                       ? (isRTL
                           ? 'إدارة موظفي الشركة وصلاحياتهم'
                           : 'Manage company employees and their permissions')
@@ -149,12 +126,7 @@ class ManagementFeaturesCard extends StatelessWidget {
               icon: Icons.people,
               color: Colors.indigo,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserManagementScreen(),
-                  ),
-                );
+                context.push(AppRoutes.userManagement);
               },
             ),
           ],

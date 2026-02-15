@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/business_signup_screen.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/personal_signup_screen.dart';
-import 'package:expense_tracker/features/auth/presentation/pages/login_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:expense_tracker/app/router/go_router.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 
@@ -88,12 +87,7 @@ class WelcomeScreen extends StatelessWidget {
                                 : 'Manage company expenses and team',
                         color: Colors.blue,
                         onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => const BusinessSignupScreen(),
-                            ),
-                          );
+                          context.push(AppRoutes.signupBusiness);
                         },
                       ),
 
@@ -109,12 +103,7 @@ class WelcomeScreen extends StatelessWidget {
                                 : 'Manage your personal expenses',
                         color: Colors.green,
                         onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => const PersonalSignupScreen(),
-                            ),
-                          );
+                          context.push(AppRoutes.signupPersonal);
                         },
                       ),
 
@@ -123,11 +112,7 @@ class WelcomeScreen extends StatelessWidget {
                       // Already have account
                       TextButton(
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const SimpleLoginScreen(),
-                            ),
-                          );
+                          context.go(AppRoutes.login);
                         },
                         child: Text(
                           isRTL

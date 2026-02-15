@@ -1,11 +1,12 @@
-// ✅ Project Dialog - Refactored with Widgets
+// ✅ Project Dialog - Uses ProjectCubit only (no service/API access).
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
-import 'package:expense_tracker/core/di/service_locator.dart';
 import 'package:expense_tracker/core/utils/responsive_utils.dart';
-import 'package:expense_tracker/features/projects/data/models/project.dart';
-import 'package:expense_tracker/features/projects/data/datasources/project_api_service.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_entity.dart';
+import 'package:expense_tracker/features/projects/domain/entities/project_status.dart';
+import 'package:expense_tracker/features/projects/presentation/cubit/project_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:expense_tracker/features/settings/presentation/cubit/settings_state.dart';
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_name_field.dart';
@@ -16,7 +17,7 @@ import 'package:expense_tracker/features/projects/presentation/widgets/project_d
 import 'package:expense_tracker/features/projects/presentation/widgets/project_dialog/project_optional_fields.dart';
 
 class ProjectDialog extends StatefulWidget {
-  final Project? project;
+  final ProjectEntity? project;
 
   const ProjectDialog({super.key, this.project});
 
@@ -32,9 +33,6 @@ class _ProjectDialogState extends State<ProjectDialog> {
   final _clientNameController = TextEditingController();
   final _managerNameController = TextEditingController();
 
-  // API Service
-  ProjectApiService get _projectService => serviceLocator.projectService;
-
   ProjectStatus _selectedStatus = ProjectStatus.planning;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
@@ -49,7 +47,7 @@ class _ProjectDialogState extends State<ProjectDialog> {
     }
   }
 
-  void _initializeWithProject(Project project) {
+  void _initializeWithProject(ProjectEntity project) {
     _nameController.text = project.name;
     _descriptionController.text = project.description ?? '';
     _budgetController.text = project.budget.toString();
@@ -99,6 +97,7 @@ class _ProjectDialogState extends State<ProjectDialog> {
     setState(() => _isLoading = true);
 
     try {
+      final now = DateTime.now();
       final project =
           widget.project?.copyWith(
             name: _nameController.text.trim(),
@@ -119,8 +118,9 @@ class _ProjectDialogState extends State<ProjectDialog> {
                 _managerNameController.text.trim().isEmpty
                     ? null
                     : _managerNameController.text.trim(),
+            updatedAt: now,
           ) ??
-          Project(
+          ProjectEntity(
             id: const Uuid().v4(),
             name: _nameController.text.trim(),
             description:
@@ -131,6 +131,7 @@ class _ProjectDialogState extends State<ProjectDialog> {
             status: _selectedStatus,
             startDate: _startDate,
             endDate: _endDate,
+            spentAmount: 0.0,
             priority: _priority,
             clientName:
                 _clientNameController.text.trim().isEmpty
@@ -140,18 +141,18 @@ class _ProjectDialogState extends State<ProjectDialog> {
                 _managerNameController.text.trim().isEmpty
                     ? null
                     : _managerNameController.text.trim(),
-            createdAt: DateTime.now(),
+            createdAt: now,
+            updatedAt: now,
           );
 
-      // Save or update project via API
       if (widget.project != null) {
-        await _projectService.updateProject(widget.project!.id, project);
+        await context.read<ProjectCubit>().updateProject(widget.project!.id, project);
       } else {
-        await _projectService.createProject(project);
+        await context.read<ProjectCubit>().createProject(project);
       }
 
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(true);
+      if (mounted && context.canPop()) {
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -229,8 +230,8 @@ class _ProjectDialogState extends State<ProjectDialog> {
                               _isLoading
                                   ? null
                                   : () {
-                                    if (Navigator.of(context).canPop()) {
-                                      Navigator.of(context).pop();
+                                    if (context.canPop()) {
+                                      context.pop();
                                     }
                                   },
                           icon: Icon(
